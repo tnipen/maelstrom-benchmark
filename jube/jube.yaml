@@ -1,21 +1,38 @@
 name:    benchmark
 outpath: results
 comment: MAELSTROM GPU/CPU/IPU benchmark jube script
+# Tags:
+# - ipu (IPUS on dc-ipu). Must be scheduled from JURECA.
+# - jwb (GPUs on JUWELS booster)
+# - jwc (GPUs on JUWELS cluster)
+# - amd (CPUs on JUWELS booster)
 
 parameterset:
   - name: appParameters
     parameter:
       - name: program
-        tag: "!jripu"
+        tag: "!ipu"
         type: string
-        _: python -u $jube_benchmark_home/../simple_benchmark.py
+        _: python -u $jube_benchmark_home/../benchmark.py
       - name: program
-        tag: "jripu"
+        tag: "ipu"
         type: string
-        _: apptainer run $jube_benchmark_home/../benchmark.sif -- python -u $jube_benchmark_home/../simple_benchmark.py
+        _: apptainer run $jube_benchmark_home/../benchmark.sif -- python -u $jube_benchmark_home/../benchmark.py
       - name: batch_size
         type: int
         _: 1
+      - name: hardware
+        type: string
+        tag: jwb|jwc
+        _: gpu
+      - name: hardware
+        type: string
+        tag: ipu
+        _: ipu
+      - name: hardware
+        type: string
+        tag: amd
+        _: cpu
       - name: experiment
         type: int
         _: 0 # ,1,2
@@ -30,11 +47,11 @@ parameterset:
         _: unet
       - name: program_args
         type: string
-        _: "-m ${model} -b ${batch_size} -e ${nepochs} -s ${batches_per_epoch}"
+        _: "-m ${model} -b ${batch_size} -e ${nepochs} -s ${batches_per_epoch} -w ${hardware}"
   - name: globalParameter
     parameter:
       - name: modules
-        tag: "jwb|jwc|jarm"
+        tag: "jwb|jwc|amd"
         separator: |
         _: 
           module load Stages/2022 &&
@@ -51,11 +68,11 @@ parameterset:
         tag: jwb
         _: jwb
       - name: systemname
-        tag: jrarm
-        _: jrarm
+        tag: amd
+        _: jwb
       - name: systemname
-        tag: jripu
-        _: jripu
+        tag: ipu
+        _: jrc
   - name: executeset
     init_with: platform.xml
   - name: systemParameter
@@ -63,15 +80,15 @@ parameterset:
     parameter:
       - name: preprocess
         mode: text
-        tag: "!jripu"
+        tag: "jwb|jwc|amd"
         _:
           $modules;
           # source $jube_benchmark_home/.venv_${systemname}/bin/activate;
 
       - {name: n_cpu, _: 48, tag: jwb}
-      - {name: n_cpu, _: 48, tag: jrarm}
+      - {name: n_cpu, _: 48, tag: amd}
       - {name: n_cpu, _: 40, tag: jwc}
-      - {name: n_cpu, _: 48, tag: jripu}
+      - {name: n_cpu, _: 48, tag: ipu}
       - name: SRUN_CPUS_PER_TASK
         export: true
         _: ${SLURM_CPUS_PER_TASK}
@@ -90,23 +107,20 @@ parameterset:
       - name: timelimit
         _: "00:15:00"
       - name: account
-        tag: jwb|jwc
+        tag: jwb|jwc|amd
         _: deepacf
       - name: account
-        tag: jripu
+        tag: ipu
         _: exalab
       - name: queue
-        tag: jwb
+        tag: jwb|amd
         _: booster
       - name: queue
         tag: jwc
         _: gpu
       - name: queue
-        tag: jripu
+        tag: ipu
         _: dc-ipu
-      - name: queue
-        tag: jrarm
-        _: dc-arm
       - name: gres
         tag: jwb|jwc
         _: gpu:$n_gpu
