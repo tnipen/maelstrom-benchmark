@@ -135,14 +135,15 @@ patternset:
    - name: perf_patterns
      pattern:
       - {name: jobid, type: int, _: "Submitted batch job $jube_pat_int" }
+      - {name: hostname, type: string, _: "Hostname: $jube_pat_wrd" }
       - {name: training_time, type: float, _: "Total training time: ${jube_pat_fp} s"}
       - {name: num_weights, type: int, _: "Num trainable weights: ${jube_pat_int}"}
       - {name: epoch_time_first, type: float, _: "First epoch time: $jube_pat_fp s"}
       - {name: epoch_time_min, type: float, _: "Min epoch time: $jube_pat_fp s"}
       - {name: epoch_time_avg, type: float, _: "Mean epoch time: $jube_pat_fp s"}
       - {name: epoch_time_max, type: float, _: "Max epoch time: $jube_pat_fp s"}
-      - {name: cpu_mem, type: float, _: "Final CPU memory:.*peak: $jube_pat_fp MB"}
-      - {name: gpu_mem, type: float, _: "Final GPU memory:.*peak: $jube_pat_fp MB"}
+      - {name: cpu_mem, type: float, _: "CPU memory:.*peak: $jube_pat_fp MB"}
+      - {name: gpu_mem, type: float, _: "GPU memory:.*peak: $jube_pat_fp MB"}
       - {name: performance, type: float, _: "Average performance:\\s+$jube_pat_fp MB/s"}
       - {name: performance_min_epoch, type: float, _: "Performance min epoch:\\s+$jube_pat_fp MB/s"}
 
@@ -165,6 +166,7 @@ result:
         column: 
           - {title: "Exp", _: experiment}
           - {title: "JobID", _: jobid}
+          - {title: "Host", _: hostname}
           - {title: "Model", _: model}
           - {title: "Num weights", _: num_weights}
             # - {title: "num procs", _: n_procs}
@@ -178,7 +180,6 @@ result:
             # - {title: "max epoch time [s]", _: epoch_time_max}
           - {title: "Max cpu mem", _: cpu_mem}
           - {title: "Max gpu mem", _: gpu_mem}
-          - {title: "NodeID", _: node_id}
 
 step:
   - name: setup_venv
