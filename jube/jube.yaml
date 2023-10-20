@@ -136,7 +136,6 @@ patternset:
      pattern:
       - {name: jobid, type: int, _: "Submitted batch job $jube_pat_int" }
       - {name: training_time, type: float, _: "Total training time: ${jube_pat_fp} s"}
-      - {name: model, type: string, _: "Model: ${jube_pat_wrd}"}
       - {name: num_weights, type: string, _: "Num trainable weights: ${jube_pat_nint}"}
       - {name: epoch_time_first, type: float, _: "First epoch time: $jube_pat_fp s"}
       - {name: epoch_time_min, type: float, _: "Min epoch time: $jube_pat_fp s"}
@@ -163,19 +162,18 @@ result:
         style: pretty
         sort: iter_pat
         column: 
-          - {title: "Experiment", _: experiment}
+          - {title: "Exp", _: experiment}
           - {title: "JobID", _: jobid}
           - {title: "Model", _: model}
           - {title: "Num weights", _: num_weights}
-          - {title: "num procs", _: n_procs}
-          - {title: "# cpu", _: threadspertask}
+            # - {title: "num procs", _: n_procs}
+            # - {title: "# cpu", _: threadspertask}
           - {title: "Training time", _: training_time}
           - {title: "avg. epoch time [s]", _: epoch_time_avg}
           - {title: "performance [GB/s]", _: performance}
           - {title: "first epoch time [s]", _: epoch_time_first}
           - {title: "min epoch time [s]", _: epoch_time_min}
           - {title: "max epoch time [s]", _: epoch_time_max}
-          - {title: "avg. batch time [s]", _: batch_time_avg}
           - {title: "max cpu mem", _: cpu_mem}
           - {title: "max gpu mem", _: gpu_mem}
           - {title: "node_id", _: node_id}
