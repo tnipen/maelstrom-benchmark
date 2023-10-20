@@ -4,6 +4,7 @@ import os
 import psutil
 import resource
 import time
+import socket
 
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 import tensorflow as tf
@@ -74,8 +75,10 @@ def main():
     # Write out results
     times = timing_callback.get_epoch_times()
     num_trainable_weights = int(np.sum([K.count_params(w) for w in model.trainable_weights]))
+    hostname = socket.gethostname().split('.')[0]
     print("Benchmark stats:")
     print(f"   Hardware: ", args.hardware.upper())
+    print(f"   Hostname: {hostname}")
     print(f"   Pred sample shape: {pred_shape}")
     print(f"   Target sample shape: {target_shape}")
     print(f"   Num epochs: ", args.epochs)
