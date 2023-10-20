@@ -136,14 +136,15 @@ patternset:
      pattern:
       - {name: jobid, type: int, _: "Submitted batch job $jube_pat_int" }
       - {name: training_time, type: float, _: "Total training time: ${jube_pat_fp} s"}
-      - {name: num_weights, type: string, _: "Num trainable weights: ${jube_pat_nint}"}
+      - {name: num_weights, type: int, _: "Num trainable weights: ${jube_pat_int}"}
       - {name: epoch_time_first, type: float, _: "First epoch time: $jube_pat_fp s"}
       - {name: epoch_time_min, type: float, _: "Min epoch time: $jube_pat_fp s"}
       - {name: epoch_time_avg, type: float, _: "Mean epoch time: $jube_pat_fp s"}
       - {name: epoch_time_max, type: float, _: "Max epoch time: $jube_pat_fp s"}
-      - {name: cpu_mem, type: float, _: "Final CPU memory:.*peak: $jube_pat_fp GB"}
-      - {name: gpu_mem, type: float, _: "Final GPU memory:.*peak: $jube_pat_fp GB"}
-      - {name: performance, type: float, _: "Average performance:\\s+$jube_pat_fp GB/s"}
+      - {name: cpu_mem, type: float, _: "Final CPU memory:.*peak: $jube_pat_fp MB"}
+      - {name: gpu_mem, type: float, _: "Final GPU memory:.*peak: $jube_pat_fp MB"}
+      - {name: performance, type: float, _: "Average performance:\\s+$jube_pat_fp MB/s"}
+      - {name: performance_min_epoch, type: float, _: "Performance min epoch:\\s+$jube_pat_fp MB/s"}
 
 analyser:
     - name: analyse_train
@@ -169,14 +170,15 @@ result:
             # - {title: "num procs", _: n_procs}
             # - {title: "# cpu", _: threadspertask}
           - {title: "Training time", _: training_time}
-          - {title: "avg. epoch time [s]", _: epoch_time_avg}
-          - {title: "performance [GB/s]", _: performance}
-          - {title: "first epoch time [s]", _: epoch_time_first}
-          - {title: "min epoch time [s]", _: epoch_time_min}
-          - {title: "max epoch time [s]", _: epoch_time_max}
-          - {title: "max cpu mem", _: cpu_mem}
-          - {title: "max gpu mem", _: gpu_mem}
-          - {title: "node_id", _: node_id}
+            # - {title: "avg. epoch time [s]", _: epoch_time_avg}
+          - {title: "First epoch [s]", _: epoch_time_first}
+          - {title: "Performance [MB/s]", _: performance}
+          - {title: "Best epoch [s]", _: epoch_time_min}
+          - {title: "Performance [MB/s]", _: performance_min_epoch}
+            # - {title: "max epoch time [s]", _: epoch_time_max}
+          - {title: "Max cpu mem", _: cpu_mem}
+          - {title: "Max gpu mem", _: gpu_mem}
+          - {title: "NodeID", _: node_id}
 
 step:
   - name: setup_venv
