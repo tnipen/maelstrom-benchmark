@@ -1,0 +1,203 @@
+name:    Simple benchmark
+outpath: jube_output
+comment: MAELSTROM GPU/CPU/IPU benchmark jube script
+
+parameterset:
+  - name: appParameters
+    parameter:
+      - name: program
+        tag: "!jripu"
+        type: string
+        _: python -u $jube_benchmark_home/../simple_benchmark.py
+      - name: program
+        tag: "jripu"
+        type: string
+        _: apptainer run benchmark.sif -- python -u $jube_benchmark_home/../simple_benchmark.py
+      - name: batch_size
+        type: int
+        _: 1
+      - name: experiment
+        type: int
+        _: 0 # ,1,2
+      - name: nepochs
+        type: int
+        _: 3
+      - name: batches_per_epoch
+        type: int
+        _: 10
+      - name: model
+        type: string
+        _: unet
+      - name: program_args
+        type: string
+        _: "-m ${model} -b ${batch_size} -e ${nepochs} -s ${batches_per_epoch}"
+  - name: globalParameter
+    parameter:
+      - name: modules
+        tag: "jwb|jwc|jarm"
+        separator: |
+        _: 
+          module load Stages/2022 &&
+          module load GCCcore/.11.2.0 &&
+          module load TensorFlow/2.6.0-CUDA-11.5 &&
+          module load GCC/11.2.0 &&
+          module load OpenMPI/4.1.2 &&
+          module load mpi4py/3.1.3 &&
+          module load Horovod/0.24.3
+      - name: systemname
+        tag: jwc
+        _: jwc
+      - name: systemname
+        tag: jwb
+        _: jwb
+      - name: systemname
+        tag: jrarm
+        _: jrarm
+      - name: systemname
+        tag: jripu
+        _: jripu
+  - name: executeset
+    init_with: platform.xml
+  - name: systemParameter
+    init_with: platform.xml
+    parameter:
+      - name: preprocess
+        mode: text
+        tag: "jripu"
+        _:
+          source $jube_benchmark_home/.venv_${systemname}/bin/activate;
+      - name: preprocess
+        mode: text
+        tag: "!jripu"
+        _:
+          $modules;
+          source $jube_benchmark_home/.venv_${systemname}/bin/activate;
+
+      - {name: n_cpu, _: 48, tag: jwb}
+      - {name: n_cpu, _: 48, tag: jrarm}
+      - {name: n_cpu, _: 40, tag: jwc}
+      - {name: n_cpu, _: 48, tag: jripu}
+      - name: SRUN_CPUS_PER_TASK
+        export: true
+        _: ${SLURM_CPUS_PER_TASK}
+      - name: nodes
+        _: 1
+      - name: n_procs
+        _: 1
+      - name: n_gpu
+        _: $n_procs
+      - name: taskspernode
+        _: $n_procs
+      - name: threadspertask
+        mode: python
+        type: int
+        _:  $n_cpu // $n_procs
+      - name: timelimit
+        _: "00:15:00"
+      - name: account
+        tag: jwb|jwc
+        _: deepacf
+      - name: account
+        tag: jripu
+        _: exalab
+      - name: queue
+        tag: jwb
+        _: booster
+      - name: queue
+        tag: jwc
+        _: gpu
+      - name: queue
+        tag: jripu
+        _: dc_ipu
+      - name: queue
+        tag: jrarm
+        _: dc_arm
+      - name: gres
+        tag: jwb|jwc
+        _: gpu:$n_gpu
+      - name: executable
+        _: ${program}
+      - name: args_exec
+        mode: text
+        _: > 
+          ${program_args}
+
+patternset:
+   - name: perf_patterns
+     pattern:
+      - {name: jobid, type: int, _: "Submitted batch job $jube_pat_int" }
+      - {name: training_time, type: float, _: "Total training time: ${jube_pat_fp} s"}
+      - {name: model, type: string, _: "Model: ${jube_pat_wrd}"}
+      - {name: num_weights, type: string, _: "Num trainable weights: ${jube_pat_nint}"}
+      - {name: epoch_time_first, type: float, _: "First epoch time: $jube_pat_fp s"}
+      - {name: epoch_time_min, type: float, _: "Min epoch time: $jube_pat_fp s"}
+      - {name: epoch_time_avg, type: float, _: "Mean epoch time: $jube_pat_fp s"}
+      - {name: epoch_time_max, type: float, _: "Max epoch time: $jube_pat_fp s"}
+      - {name: cpu_mem, type: float, _: "Final CPU memory:.*peak: $jube_pat_fp GB"}
+      - {name: gpu_mem, type: float, _: "Final GPU memory:.*peak: $jube_pat_fp GB"}
+      - {name: performance, type: float, _: "Average performance:\\s+$jube_pat_fp GB/s"}
+
+analyser:
+    - name: analyse_train
+      reduce: false
+      use: perf_patterns
+      analyse:
+        step: train
+        file:
+            - stdout
+            - job.out
+
+result:
+    - use: analyse_train
+      table:
+        name: result
+        style: pretty
+        sort: iter_pat
+        column: 
+          - {title: "Experiment", _: experiment}
+          - {title: "JobID", _: jobid}
+          - {title: "Model", _: model}
+          - {title: "Num weights", _: num_weights}
+          - {title: "num procs", _: n_procs}
+          - {title: "# cpu", _: threadspertask}
+          - {title: "Training time", _: training_time}
+          - {title: "avg. epoch time [s]", _: epoch_time_avg}
+          - {title: "performance [GB/s]", _: performance}
+          - {title: "first epoch time [s]", _: epoch_time_first}
+          - {title: "min epoch time [s]", _: epoch_time_min}
+          - {title: "max epoch time [s]", _: epoch_time_max}
+          - {title: "avg. batch time [s]", _: batch_time_avg}
+          - {title: "max cpu mem", _: cpu_mem}
+          - {title: "max gpu mem", _: gpu_mem}
+          - {title: "node_id", _: node_id}
+
+step:
+  - name: setup_venv
+    active: false
+    use:
+      - globalParameter
+      - systemParameter
+    do:
+      _:
+        $modules;
+        cd $jube_benchmark_home/../setup_env/ &&
+        source ./setup_${systemname}.sh
+
+  # Traning experiments
+  - name: train
+    active: false
+    use:
+      - appParameters
+      - globalParameter
+      - systemParameter
+      - executeset
+      - from: platform.xml
+        _: jobfiles
+      - from: platform.xml
+        _: executesub
+    do:
+      done_file: $ready_file
+      error_file: $error_file
+      _: 
+        $modules;
+        $submit $submit_script

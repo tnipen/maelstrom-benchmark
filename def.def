@@ -1,0 +1,7 @@
+Bootstrap: localimage
+From: tensorflow.sif
+
+%post
+    pip install argparse gridpp==0.6.0 "netCDF4<1.6.0" numpy pyyaml tensorflow tqdm scipy PyYAML horovod xarray dask psutil
+    pip install "dask[array]" --upgrade
+# -r requirements.txt # psutil xarray
