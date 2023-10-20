@@ -1,4 +1,4 @@
-name:    Simple benchmark
+name:    benchmark
 outpath: results
 comment: MAELSTROM GPU/CPU/IPU benchmark jube script
 
@@ -12,7 +12,7 @@ parameterset:
       - name: program
         tag: "jripu"
         type: string
-        _: apptainer run benchmark.sif -- python -u $jube_benchmark_home/../simple_benchmark.py
+        _: apptainer run $jube_benchmark_home/../benchmark.sif -- python -u $jube_benchmark_home/../simple_benchmark.py
       - name: batch_size
         type: int
         _: 1
@@ -103,10 +103,10 @@ parameterset:
         _: gpu
       - name: queue
         tag: jripu
-        _: dc_ipu
+        _: dc-ipu
       - name: queue
         tag: jrarm
-        _: dc_arm
+        _: dc-arm
       - name: gres
         tag: jwb|jwc
         _: gpu:$n_gpu

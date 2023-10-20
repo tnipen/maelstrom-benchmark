@@ -24,4 +24,4 @@ deps*
 .venv*
 python-*
 *.sh
-logs
+*.sif
