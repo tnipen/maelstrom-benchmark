@@ -1,5 +1,5 @@
 name:    Simple benchmark
-outpath: jube_output
+outpath: results
 comment: MAELSTROM GPU/CPU/IPU benchmark jube script
 
 parameterset:
@@ -63,15 +63,10 @@ parameterset:
     parameter:
       - name: preprocess
         mode: text
-        tag: "jripu"
-        _:
-          source $jube_benchmark_home/.venv_${systemname}/bin/activate;
-      - name: preprocess
-        mode: text
         tag: "!jripu"
         _:
           $modules;
-          source $jube_benchmark_home/.venv_${systemname}/bin/activate;
+          # source $jube_benchmark_home/.venv_${systemname}/bin/activate;
 
       - {name: n_cpu, _: 48, tag: jwb}
       - {name: n_cpu, _: 48, tag: jrarm}
@@ -185,7 +180,7 @@ step:
 
   # Traning experiments
   - name: train
-    active: false
+    active: true
     use:
       - appParameters
       - globalParameter
