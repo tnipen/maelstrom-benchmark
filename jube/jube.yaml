@@ -117,7 +117,7 @@ parameterset:
         _: booster
       - name: queue
         tag: jwc
-        _: gpu
+        _: gpus
       - name: queue
         tag: ipu
         _: dc-ipu
