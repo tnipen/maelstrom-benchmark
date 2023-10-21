@@ -6,6 +6,7 @@ comment: MAELSTROM GPU/CPU/IPU benchmark jube script
 # - jwb (GPUs on JUWELS booster)
 # - jwc (GPUs on JUWELS cluster)
 # - amd (CPUs on JUWELS booster)
+# - intel (CPUs on JUWELS cluster)
 
 parameterset:
   - name: appParameters
@@ -20,7 +21,7 @@ parameterset:
         _: apptainer run $jube_benchmark_home/../benchmark.sif -- python -u $jube_benchmark_home/../benchmark.py
       - name: batch_size
         type: int
-        _: 2, 4, 8, 16
+        _: 2, 4, 8, 16, 32, 64
       - name: hardware
         type: string
         tag: jwb|jwc
@@ -33,6 +34,10 @@ parameterset:
         type: string
         tag: amd
         _: cpu
+      - name: hardware
+        type: string
+        tag: intel
+        _: cpu
       - name: experiment
         type: int
         _: 0 # ,1,2
@@ -42,16 +47,19 @@ parameterset:
       - name: batches_per_epoch
         type: int
         _: 80
+      - name: patch_size
+        type: int
+        _: 256
       - name: model
         type: string
         _: unet
       - name: program_args
         type: string
-        _: "-m ${model} -b ${batch_size} -e ${nepochs} -s ${batches_per_epoch} -w ${hardware}"
+        _: "-m ${model} -b ${batch_size} -e ${nepochs} -s ${batches_per_epoch} -p ${patch_size} -w ${hardware}"
   - name: globalParameter
     parameter:
       - name: modules
-        tag: "jwb|jwc|amd"
+        tag: "jwb|jwc|amd|intel"
         separator: |
         _: 
           module load Stages/2022 &&
@@ -71,6 +79,9 @@ parameterset:
         tag: amd
         _: jwb
       - name: systemname
+        tag: intel
+        _: jwb
+      - name: systemname
         tag: ipu
         _: jrc
   - name: executeset
@@ -80,13 +91,14 @@ parameterset:
     parameter:
       - name: preprocess
         mode: text
-        tag: "jwb|jwc|amd"
+        tag: "jwb|jwc|amd|intel"
         _:
           $modules;
           # source $jube_benchmark_home/.venv_${systemname}/bin/activate;
 
       - {name: n_cpu, _: 48, tag: jwb}
       - {name: n_cpu, _: 48, tag: amd}
+      - {name: n_cpu, _: 48, tag: intel}
       - {name: n_cpu, _: 40, tag: jwc}
       - {name: n_cpu, _: 48, tag: ipu}
       - name: SRUN_CPUS_PER_TASK
@@ -107,7 +119,7 @@ parameterset:
       - name: timelimit
         _: "00:15:00"
       - name: account
-        tag: jwb|jwc|amd
+        tag: jwb|jwc|amd|intel
         _: deepacf
       - name: account
         tag: ipu
@@ -118,6 +130,9 @@ parameterset:
       - name: queue
         tag: jwc
         _: gpus
+      - name: queue
+        tag: intel
+        _: batch
       - name: queue
         tag: ipu
         _: dc-ipu
@@ -173,6 +188,7 @@ result:
           - {title: "Hardware", _: hardware}
           - {title: "Batch size", _: batch_size}
           - {title: "Batches per epoch", _: batches_per_epoch}
+          - {title: "Patch size", _: patch_size}
           - {title: "Dataset size", _: dataset_size}
           - {title: "Epochs", _: nepochs}
           - {title: "Model", _: model}
