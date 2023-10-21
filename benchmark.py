@@ -18,7 +18,7 @@ def main():
     parser.add_argument('-e', default=3, type=int, help='Number of epochs', dest="epochs")
     parser.add_argument('-s', default=10, type=int, help='Number of batches per epoch', dest="steps_per_epoch")
     parser.add_argument('-m', default="unet", help="Model", dest="model", choices=["unet", "dnn"])
-    parser.add_argument('-p'. default=128, type=int, help='Patch size', dest="patch_size")
+    parser.add_argument('-p', default=128, type=int, help='Patch size', dest="patch_size")
     parser.add_argument('-w', help='What hardware to run this on', dest='hardware', choices=["gpu", "cpu", "ipu"], required=True)
     parser.add_argument('--debug', help='Turn on debugging information', action="store_true")
     args = parser.parse_args()
