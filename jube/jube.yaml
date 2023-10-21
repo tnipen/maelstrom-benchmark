@@ -41,7 +41,7 @@ parameterset:
         _: 3
       - name: batches_per_epoch
         type: int
-        _: 20
+        _: 80
       - name: model
         type: string
         _: unet
@@ -138,6 +138,7 @@ patternset:
       - {name: hostname, type: string, _: "Hostname: $jube_pat_wrd" }
       - {name: training_time, type: float, _: "Total training time: ${jube_pat_fp} s"}
       - {name: num_weights, type: int, _: "Num trainable weights: ${jube_pat_int}"}
+      - {name: dataset_size, type: float, _: "Dataset size: ${jube_pat_fp} MB"}
       - {name: epoch_time_first, type: float, _: "First epoch time: $jube_pat_fp s"}
       - {name: epoch_time_min, type: float, _: "Min epoch time: $jube_pat_fp s"}
       - {name: epoch_time_avg, type: float, _: "Mean epoch time: $jube_pat_fp s"}
@@ -165,12 +166,14 @@ result:
         sort: iter_pat
         column: 
           - {title: "JUBE id", _: jube_benchmark_id}
+          - {title: "JUBE workpackage", _: jube_wp_id}
           - {title: "Exp", _: experiment}
           - {title: "JobID", _: jobid}
           - {title: "Host", _: hostname}
           - {title: "Hardware", _: hardware}
           - {title: "Batch size", _: batch_size}
           - {title: "Batches per epoch", _: batches_per_epoch}
+          - {title: "Dataset size", _: dataset_size}
           - {title: "Epochs", _: nepochs}
           - {title: "Model", _: model}
           - {title: "Num weights", _: num_weights}
