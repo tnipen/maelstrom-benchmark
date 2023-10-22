@@ -16,12 +16,22 @@ def main():
     parser = argparse.ArgumentParser("Program to compare the performance of IPUs and GPUs")
     parser.add_argument('-b', default=1, type=int, help="Batch size (number of samples per batch)", dest="batch_size")
     parser.add_argument('-e', default=3, type=int, help='Number of epochs', dest="epochs")
-    parser.add_argument('-s', default=10, type=int, help='Number of batches per epoch', dest="steps_per_epoch")
+    # parser.add_argument('-s', default=10, type=int, help='Number of batches per epoch', dest="steps_per_epoch")
+    parser.add_argument('-d', type=float, help='Dataset size in bytes', dest="dataset_size")
     parser.add_argument('-m', default="unet", help="Model", dest="model", choices=["unet", "dnn"])
     parser.add_argument('-p', default=128, type=int, help='Patch size', dest="patch_size")
     parser.add_argument('-w', help='What hardware to run this on', dest='hardware', choices=["gpu", "cpu", "ipu"], required=True)
     parser.add_argument('--debug', help='Turn on debugging information', action="store_true")
     args = parser.parse_args()
+
+    # strategy 1
+    #   batch size (samples/batch)
+    #   batches/epoch
+    #   patch size
+    # strategy 2
+    #   patch size
+    #   dataset size
+    #   batch size
 
     if args.hardware == "cpu":
         os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
@@ -50,9 +60,13 @@ def main():
     target_shape = [1, patch_size, patch_size, 1]
     loss = quantile_score
     num_outputs = 3
+    batch_size_mb = 4 * np.product(pred_shape) * args.batch_size
 
-    dataset = get_dataset(pred_shape, target_shape, args.steps_per_epoch * args.epochs, args.batch_size)
-    dataset_size_mb = 4 * np.product(pred_shape) * args.steps_per_epoch * args.batch_size / 1024 ** 2
+    steps_per_epoch = int(args.dataset_size / 4 / np.product(pred_shape) / args.batch_size)
+    print(steps_per_epoch)
+    dataset = get_dataset(pred_shape, target_shape, steps_per_epoch * args.epochs, args.batch_size)
+    dataset_size_mb = args.dataset_size / 1024 ** 2
+    # dataset_size_mb = 4 * np.product(pred_shape) * args.steps_per_epoch * args.batch_size / 1024 ** 2
 
     with strategy.scope():
         model = get_model(args.model, pred_shape, num_outputs)
@@ -70,7 +84,7 @@ def main():
 
         # Train the model
         start_time = time.time()
-        history = model.fit(dataset, epochs=args.epochs, steps_per_epoch=args.steps_per_epoch, callbacks=callbacks)
+        history = model.fit(dataset, epochs=args.epochs, steps_per_epoch=steps_per_epoch, callbacks=callbacks)
         training_time = time.time() - start_time
 
     # Write out results
@@ -83,9 +97,10 @@ def main():
     print(f"   Pred sample shape: {pred_shape}")
     print(f"   Target sample shape: {target_shape}")
     print(f"   Num epochs: ", args.epochs)
-    print(f"   Batch size: ", args.batch_size)
-    print(f"   Batches per epoch: {args.steps_per_epoch}")
+    print(f"   Samples per batch: ", args.batch_size)
     print(f"   Dataset size: {dataset_size_mb:.2f} MB")
+    print(f"   Batches per epoch: {steps_per_epoch}")
+    print(f"   Batch size: {batch_size_mb:.2f} MB")
     print(f"   Model: {args.model.upper()}")
     print(f"   Num trainable weights: {num_trainable_weights}")
     print("Training performance:")
@@ -125,7 +140,7 @@ def get_dataset(pred_shape, target_shape, num_batches, batch_size):
         return gen
 
     output_signature = (tf.TensorSpec(shape=pred_shape, dtype=tf.float32), tf.TensorSpec(shape=target_shape, dtype=tf.float32))
-    dataset = tf.data.Dataset.from_generator(get_generator(pred_shape, target_shape, num_batches * batch_size), output_signature=output_signature)
+    dataset = tf.data.Dataset.from_generator(get_generator(pred_shape, target_shape, int(num_batches * batch_size)), output_signature=output_signature)
 
     # drop_remainder needed for IPU:
     dataset = dataset.batch(batch_size, drop_remainder=True)
