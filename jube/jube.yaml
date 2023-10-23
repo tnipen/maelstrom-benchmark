@@ -22,24 +22,23 @@ parameterset:
       - name: hardware_name
         type: string
         tag: jwb
-        _: A100 GPU
+        _: A100_GPU
       - name: hardware_name
         type: string
         tag: jwc
-        _: V100 GPU
+        _: V100_GPU
       - name: hardware_name
         type: string
         tag: ipu
-        _: GC200 IPU
+        _: GC200_IPU
       - name: hardware_name
         type: string
         tag: intel
-        _: Intel Xeon 2.7GHz
+        _: Intel_Xeon_2.7GHz
       - name: hardware_name
         type: string
         tag: amd
-        _: AMD EPYC 2.8GHz
-
+        _: AMD_EPYC_2.8GHz
       - name: hardware
         type: string
         tag: jwb|jwc
@@ -67,7 +66,7 @@ parameterset:
         # _: 80, 160, 320, 640
       - name: batch_size
         type: int
-        _: 1 # , 2, 4
+        _: 1, 2, 4
       - name: dataset_size
         tag: "!intel+!amd"
         type: int
@@ -81,7 +80,7 @@ parameterset:
         # _: 34359738368
       - name: patch_size
         type: int
-        _: 128 # , 256
+        _: 128, 256, 512
       - name: model
         type: string
         _: unet
