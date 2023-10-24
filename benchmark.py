@@ -21,6 +21,8 @@ def main():
     parser.add_argument('-m', default="unet", help="Model", dest="model", choices=["unet", "dnn"])
     parser.add_argument('-p', default=128, type=int, help='Patch size', dest="patch_size")
     parser.add_argument('-w', help='What hardware to run this on', dest='hardware', choices=["gpu", "cpu", "ipu"], required=True)
+    parser.add_argument('-s', default=1, type=int, help='Steps per execution (for IPU)', dest='steps_per_execution')
+    parser.add_argument('-r', default=1, type=int, help='Replica (for IPU)', dest='replica')
     parser.add_argument('--debug', help='Turn on debugging information', action="store_true")
     args = parser.parse_args()
 
@@ -42,7 +44,7 @@ def main():
         ipu_config.device_connection.type = (
                     ipu.config.DeviceConnectionType.ON_DEMAND
                     )  # Optional - allows parallel execution
-        ipu_config.auto_select_ipus = 1
+        ipu_config.auto_select_ipus = args.replica
         ipu_config.configure_ipu_system()
         # ipu_config.io_tiles.num_io_tiles = 128
         # ipu_config.io_tiles.place_ops_on_io_tiles = True
@@ -63,16 +65,22 @@ def main():
     batch_size_mb = 4 * np.product(pred_shape) * args.batch_size / 1024 / 1024
 
     steps_per_epoch = int(args.dataset_size / 4 / np.product(pred_shape) / args.batch_size)
-    print(steps_per_epoch)
+    # Adjust steps so that it is a multiple of steps_per_execution * replicas
+    steps_per_epoch = (steps_per_epoch // (args.steps_per_execution * args.replica)) * args.steps_per_execution * args.replica
+    print("Steps per epoch:", steps_per_epoch)
     dataset = get_dataset(pred_shape, target_shape, steps_per_epoch * args.epochs, args.batch_size)
-    dataset_size_mb = args.dataset_size / 1024 ** 2
+    # dataset_size_mb = args.dataset_size / 1024 ** 2
+    dataset_size_mb = batch_size_mb * steps_per_epoch
     # dataset_size_mb = 4 * np.product(pred_shape) * args.steps_per_epoch * args.batch_size / 1024 ** 2
 
     with strategy.scope():
         model = get_model(args.model, pred_shape, num_outputs)
         learning_rate = 1.0e-5  # Doesn't matter for this benchmark
         optimizer = keras.optimizers.Adam(learning_rate)
-        model.compile(optimizer=optimizer, loss=loss)
+        if args.hardware == "ipu":
+            model.compile(optimizer=optimizer, loss=loss, steps_per_execution=args.steps_per_execution)
+        else:
+            model.compile(optimizer=optimizer, loss=loss)
 
         # Print out dataset
         # for k,v in dataset:

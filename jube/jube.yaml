@@ -66,7 +66,13 @@ parameterset:
         # _: 80, 160, 320, 640
       - name: batch_size
         type: int
-        _: 1, 2, 4
+        _: 1
+      - name: replica
+        type: int
+        _: 2, 4
+      - name: steps_per_execution
+        type: int
+        _: 2, 4
       - name: dataset_size
         tag: "!intel+!amd"
         type: int
@@ -80,14 +86,14 @@ parameterset:
         # _: 34359738368
       - name: patch_size
         type: int
-        _: 128, 256, 512
+        _: 256
       - name: model
         type: string
         _: unet
       - name: program_args
         type: string
         # _: "-m ${model} -b ${batch_size} -e ${nepochs} -s ${batches_per_epoch} -p ${patch_size} -w ${hardware}"
-        _: "-m ${model} -b ${batch_size} -e ${nepochs} -d ${dataset_size} -p ${patch_size} -w ${hardware}"
+        _: "-m ${model} -b ${batch_size} -e ${nepochs} -d ${dataset_size} -p ${patch_size} -w ${hardware} -s ${steps_per_execution} -r ${replica}"
   - name: globalParameter
     parameter:
       - name: modules
@@ -192,8 +198,8 @@ patternset:
       - {name: epoch_time_min, type: float, _: "Min epoch time: $jube_pat_fp s"}
       - {name: epoch_time_avg, type: float, _: "Mean epoch time: $jube_pat_fp s"}
       - {name: epoch_time_max, type: float, _: "Max epoch time: $jube_pat_fp s"}
-      - {name: cpu_mem, type: float, _: "CPU memory:.*peak: $jube_pat_fp MB"}
-      - {name: gpu_mem, type: float, _: "GPU memory:.*peak: $jube_pat_fp MB"}
+      - {name: cpu_mem, type: float, _: "CPU memory:.*peak: $jube_pat_fp GB"}
+      - {name: gpu_mem, type: float, _: "GPU memory:.*peak: $jube_pat_fp GB"}
       - {name: performance, type: float, _: "Average performance:\\s+$jube_pat_fp MB/s"}
       - {name: performance_min_epoch, type: float, _: "Performance min epoch:\\s+$jube_pat_fp MB/s"}
 
@@ -220,6 +226,8 @@ result:
           - {title: "JobID", _: jobid}
           - {title: "Host", _: hostname}
           - {title: "Hardware", _: hardware_name}
+          - {title: "Steps per exectution", _: steps_per_execution}
+          - {title: "Replica", _: replica}
           - {title: "Dataset size [MB]", _: dataset_size_mb}
           - {title: "Samples per batch", _: batch_size}
           - {title: "Patch size", _: patch_size}
