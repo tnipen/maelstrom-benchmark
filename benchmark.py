@@ -11,6 +11,27 @@ import tensorflow as tf
 from tensorflow import keras
 import tensorflow.keras.backend as K
 
+def check_horovod():
+    """Check if we should run with horovod based on environment variables
+
+    Returns:
+        bool: True if we should run with horovod, False otherwise
+    """
+    # Program is run with horovodrun
+    with_horovod = "HOROVOD_RANK" in os.environ
+
+    if not with_horovod:
+        # Program is run with srun
+        with_horovod = "SLURM_STEP_NUM_TASKS" in os.environ and int(os.environ["SLURM_STEP_NUM_TASKS"]) > 1
+
+    return with_horovod
+
+with_horovod = check_horovod()
+if with_horovod:
+    # Import it
+    print("Running with horovod")
+    import horovod.tensorflow as hvd
+
 """This benchmark scripts checks training performance on GPU, CPU, and IPU"""
 def main():
     parser = argparse.ArgumentParser("Program to compare the performance of IPUs and GPUs")
@@ -35,6 +56,8 @@ def main():
     #   dataset size
     #   batch size
 
+    main_process = True
+    num_processes = 1
     if args.hardware == "cpu":
         os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
         strategy = NoStrategy()
@@ -52,6 +75,19 @@ def main():
         strategy = ipu.ipu_strategy.IPUStrategy()
     else:
         gpus = tf.config.experimental.list_physical_devices("GPU")
+
+        set_gpu_memory_growth()
+        if with_horovod:
+            hvd.init()
+            print(hvd.rank(), hvd.size())
+            if len(gpus) == 0:
+                raise Exception("No GPUs available")
+            if len(gpus) > 1:
+            # if hvd.size() == len(gpus):
+                # Probably using horovodrun (not srun)
+                tf.config.experimental.set_visible_devices(gpus[hvd.local_rank()], "GPU")
+            main_process = hvd.rank() == 0
+            num_processes = hvd.size()
         print("Num GPUs Available: ", len(gpus))
         strategy = NoStrategy()
 
@@ -64,7 +100,7 @@ def main():
     num_outputs = 3
     batch_size_mb = 4 * np.product(pred_shape) * args.batch_size / 1024 / 1024
 
-    steps_per_epoch = int(args.dataset_size / 4 / np.product(pred_shape) / args.batch_size)
+    steps_per_epoch = int(args.dataset_size / 4 / np.product(pred_shape) / args.batch_size / num_processes)
     # Adjust steps so that it is a multiple of steps_per_execution * replicas
 
     if args.steps_per_execution is None:
@@ -76,17 +112,19 @@ def main():
             steps_per_execution = steps_per_epoch // args.replica
         steps_per_epoch = (steps_per_epoch // (steps_per_execution * args.replica)) * steps_per_execution * args.replica
 
-    print("steps_per_epoch:", steps_per_epoch)
-    print("steps_per_execution:", steps_per_execution)
+    if main_process:
+        print("steps_per_epoch:", steps_per_epoch)
+        print("steps_per_execution:", steps_per_execution)
     dataset = get_dataset(pred_shape, target_shape, steps_per_epoch * args.epochs, args.batch_size)
-    # dataset_size_mb = args.dataset_size / 1024 ** 2
-    dataset_size_mb = batch_size_mb * steps_per_epoch
-    # dataset_size_mb = 4 * np.product(pred_shape) * args.steps_per_epoch * args.batch_size / 1024 ** 2
+    dataset_size_mb = batch_size_mb * steps_per_epoch * num_processes
 
     with strategy.scope():
         model = get_model(args.model, pred_shape, num_outputs)
         learning_rate = 1.0e-5  # Doesn't matter for this benchmark
         optimizer = keras.optimizers.Adam(learning_rate)
+        if with_horovod:
+            optimizer = hvd.DistributedOptimizer(optimizer, backward_passes_per_step=1,
+                    average_aggregated_gradients=True)
         if args.hardware == "ipu":
             model.compile(optimizer=optimizer, loss=loss, steps_per_execution=steps_per_execution)
         else:
@@ -97,44 +135,50 @@ def main():
         #     print(k.shape, v.shape)
 
         callbacks = list()
-        timing_callback = TimingCallback()
-        callbacks += [timing_callback]
+        if with_horovod:
+            callbacks += [hvd.keras.callbacks.BroadcastGlobalVariablesCallback(0)]
+            callbacks += [hvd.keras.callbacks.MetricAverageCallback()]
+        if main_process:
+            timing_callback = TimingCallback()
+            callbacks += [timing_callback]
 
         # Train the model
         start_time = time.time()
-        history = model.fit(dataset, epochs=args.epochs, steps_per_epoch=steps_per_epoch, callbacks=callbacks)
+        history = model.fit(dataset, epochs=args.epochs, steps_per_epoch=steps_per_epoch, callbacks=callbacks, verbose=main_process)
         training_time = time.time() - start_time
 
     # Write out results
-    times = timing_callback.get_epoch_times()
-    num_trainable_weights = int(np.sum([K.count_params(w) for w in model.trainable_weights]))
-    hostname = socket.gethostname().split('.')[0]
-    print("Benchmark stats:")
-    print(f"   Hardware: ", args.hardware.upper())
-    print(f"   Hostname: {hostname}")
-    print(f"   Pred sample shape: {pred_shape}")
-    print(f"   Target sample shape: {target_shape}")
-    print(f"   Num epochs: ", args.epochs)
-    print(f"   Samples per batch: ", args.batch_size)
-    print(f"   Dataset size: {dataset_size_mb:.2f} MB")
-    print(f"   Steps per execution: {steps_per_execution}")
-    print(f"   Num replicas: {args.replica}")
-    print(f"   Batches per epoch: {steps_per_epoch}")
-    print(f"   Batch size: {batch_size_mb:.2f} MB")
-    print(f"   Model: {args.model.upper()}")
-    print(f"   Num trainable weights: {num_trainable_weights}")
-    print("Training performance:")
-    print(f"   Total training time: {training_time:.2f} s")
-    print(f"   Average performance: {dataset_size_mb / training_time * args.epochs:.2f} MB/s")
-    print(f"   First epoch time: {times[0]:.2f} s")
-    print(f"   Min epoch time: {np.min(times):.2f} s")
-    print(f"   Performance min epoch: {dataset_size_mb / np.min(times):.2f} MB/s")
-    print(f"   Mean epoch time: {np.mean(times):.2f} s")
-    print(f"   Performance mean epoch: {dataset_size_mb / np.mean(times):.2f} MB/s")
-    print(f"   Max epoch time: {np.max(times):.2f} s")
-    print(f"   Performance max epoch: {dataset_size_mb / np.max(times):.2f} MB/s")
-    print_gpu_usage("   GPU memory: ")
-    print_cpu_usage("   CPU memory: ")
+    if main_process:
+        times = timing_callback.get_epoch_times()
+        num_trainable_weights = int(np.sum([K.count_params(w) for w in model.trainable_weights]))
+        hostname = socket.gethostname().split('.')[0]
+        print("Benchmark stats:")
+        print(f"   Hardware: ", args.hardware.upper())
+        print(f"   Hostname: {hostname}")
+        print(f"   Pred sample shape: {pred_shape}")
+        print(f"   Target sample shape: {target_shape}")
+        print(f"   Num epochs: ", args.epochs)
+        print(f"   Samples per batch: ", args.batch_size)
+        print(f"   Dataset size: {dataset_size_mb:.2f} MB")
+        print(f"   Steps per execution: {steps_per_execution}")
+        print(f"   Num replicas: {args.replica}")
+        print(f"   Batches per epoch: {steps_per_epoch}")
+        print(f"   Batch size: {batch_size_mb:.2f} MB")
+        print(f"   Model: {args.model.upper()}")
+        print(f"   Num trainable weights: {num_trainable_weights}")
+        print(f"   Num processes: {num_processes}")
+        print("Training performance:")
+        print(f"   Total training time: {training_time:.2f} s")
+        print(f"   Average performance: {dataset_size_mb / training_time * args.epochs:.2f} MB/s")
+        print(f"   First epoch time: {times[0]:.2f} s")
+        print(f"   Min epoch time: {np.min(times):.2f} s")
+        print(f"   Performance min epoch: {dataset_size_mb / np.min(times):.2f} MB/s")
+        print(f"   Mean epoch time: {np.mean(times):.2f} s")
+        print(f"   Performance mean epoch: {dataset_size_mb / np.mean(times):.2f} MB/s")
+        print(f"   Max epoch time: {np.max(times):.2f} s")
+        print(f"   Performance max epoch: {dataset_size_mb / np.max(times):.2f} MB/s")
+        print_gpu_usage("   GPU memory: ")
+        print_cpu_usage("   CPU memory: ")
 
 
 """
@@ -399,6 +443,12 @@ class NoStrategy:
                 pass
         return Scope()
 
+
+def set_gpu_memory_growth():
+    gpus = tf.config.list_physical_devices('GPU')
+    if gpus:
+        for gpu in gpus:
+            tf.config.experimental.set_memory_growth(gpu, True)
 
 if __name__ == "__main__":
     main()
