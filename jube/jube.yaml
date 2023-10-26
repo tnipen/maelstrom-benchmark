@@ -66,18 +66,18 @@ parameterset:
         # _: 80, 160, 320, 640
       - name: batch_size
         type: int
-        _: 1
+        _: 1, 2, 4
       - name: replica
         type: int
-        _: 2, 4
+        _: 1, 2, 4
       - name: steps_per_execution
         type: int
-        _: 2, 4
+        _: 4000
       - name: dataset_size
         tag: "!intel+!amd"
         type: int
-        _: 4294967296
-        # _: 34359738368
+        # _: 4294967296
+        _: 34359738368
       - name: dataset_size
         # Use a smaller dataset for CPU benchmarks, otherwise it takes forever
         tag: intel|amd
@@ -194,6 +194,8 @@ patternset:
       - {name: dataset_size_mb, type: float, _: "Dataset size: ${jube_pat_fp} MB"}
       - {name: batch_size_mb, type: float, _: "Batch size: ${jube_pat_fp} MB"}
       - {name: batches_per_epoch, type: float, _: "Batches per epoch: ${jube_pat_int}"}
+      - {name: actual_steps_per_execution, type: int, _: "Steps per execution: ${jube_pat_int}"}
+      - {name: actual_replicas, type: int, _: "Num replicas: ${jube_pat_int}"}
       - {name: epoch_time_first, type: float, _: "First epoch time: $jube_pat_fp s"}
       - {name: epoch_time_min, type: float, _: "Min epoch time: $jube_pat_fp s"}
       - {name: epoch_time_avg, type: float, _: "Mean epoch time: $jube_pat_fp s"}
@@ -226,8 +228,8 @@ result:
           - {title: "JobID", _: jobid}
           - {title: "Host", _: hostname}
           - {title: "Hardware", _: hardware_name}
-          - {title: "Steps per exectution", _: steps_per_execution}
-          - {title: "Replica", _: replica}
+          - {title: "Steps per exectution", _: actual_steps_per_execution}
+          - {title: "Replica", _: actual_replicas}
           - {title: "Dataset size [MB]", _: dataset_size_mb}
           - {title: "Samples per batch", _: batch_size}
           - {title: "Patch size", _: patch_size}

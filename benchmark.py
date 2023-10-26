@@ -21,7 +21,7 @@ def main():
     parser.add_argument('-m', default="unet", help="Model", dest="model", choices=["unet", "dnn"])
     parser.add_argument('-p', default=128, type=int, help='Patch size', dest="patch_size")
     parser.add_argument('-w', help='What hardware to run this on', dest='hardware', choices=["gpu", "cpu", "ipu"], required=True)
-    parser.add_argument('-s', default=1, type=int, help='Steps per execution (for IPU)', dest='steps_per_execution')
+    parser.add_argument('-s', type=int, help='Steps per execution (for IPU)', dest='steps_per_execution')
     parser.add_argument('-r', default=1, type=int, help='Replica (for IPU)', dest='replica')
     parser.add_argument('--debug', help='Turn on debugging information', action="store_true")
     args = parser.parse_args()
@@ -66,12 +66,18 @@ def main():
 
     steps_per_epoch = int(args.dataset_size / 4 / np.product(pred_shape) / args.batch_size)
     # Adjust steps so that it is a multiple of steps_per_execution * replicas
-    steps_per_execution = args.steps_per_execution
-    if steps_per_execution * args.replica > steps_per_epoch:
-        steps_per_execution = steps_per_epoch // args.replica
-    steps_per_epoch = (steps_per_epoch // (steps_per_execution * args.replica)) * steps_per_execution * args.replica
-    print("Steps per epoch:", steps_per_epoch)
-    print("Steps per execution:", steps_per_execution)
+
+    if args.steps_per_execution is None:
+        steps_per_epoch = (steps_per_epoch // (args.replica)) * args.replica
+        steps_per_execution = steps_per_epoch
+    else:
+        steps_per_execution = args.steps_per_execution
+        if steps_per_execution * args.replica > steps_per_epoch:
+            steps_per_execution = steps_per_epoch // args.replica
+        steps_per_epoch = (steps_per_epoch // (steps_per_execution * args.replica)) * steps_per_execution * args.replica
+
+    print("steps_per_epoch:", steps_per_epoch)
+    print("steps_per_execution:", steps_per_execution)
     dataset = get_dataset(pred_shape, target_shape, steps_per_epoch * args.epochs, args.batch_size)
     # dataset_size_mb = args.dataset_size / 1024 ** 2
     dataset_size_mb = batch_size_mb * steps_per_epoch
@@ -111,6 +117,8 @@ def main():
     print(f"   Num epochs: ", args.epochs)
     print(f"   Samples per batch: ", args.batch_size)
     print(f"   Dataset size: {dataset_size_mb:.2f} MB")
+    print(f"   Steps per execution: {steps_per_execution}")
+    print(f"   Num replicas: {args.replica}")
     print(f"   Batches per epoch: {steps_per_epoch}")
     print(f"   Batch size: {batch_size_mb:.2f} MB")
     print(f"   Model: {args.model.upper()}")
