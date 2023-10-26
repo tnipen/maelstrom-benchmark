@@ -171,6 +171,8 @@ def main():
         print(f"   Total training time: {training_time:.2f} s")
         print(f"   Average performance: {dataset_size_mb / training_time * args.epochs:.2f} MB/s")
         print(f"   First epoch time: {times[0]:.2f} s")
+        print(f"   Non-first epoch time: {np.mean(times[1:]):.2f} s")
+        print(f"   Performance non-first epoch: {dataset_size_mb / np.mean(times[1:]):.2f} MB/s")
         print(f"   Min epoch time: {np.min(times):.2f} s")
         print(f"   Performance min epoch: {dataset_size_mb / np.min(times):.2f} MB/s")
         print(f"   Mean epoch time: {np.mean(times):.2f} s")

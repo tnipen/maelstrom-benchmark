@@ -60,13 +60,13 @@ parameterset:
         _: 0 # ,1,2
       - name: nepochs
         type: int
-        _: 3
+        _: 4
         # - name: batches_per_epoch
         # type: int
         # _: 80, 160, 320, 640
       - name: batch_size
         type: int
-        _: 1, 2, 4, 8
+        _: 1
       - name: replica
         tag: ipu
         type: int
@@ -102,7 +102,7 @@ parameterset:
         # _: 34359738368
       - name: patch_size
         type: int
-        _: 512
+        _: 128
       - name: model
         type: string
         _: unet
@@ -213,12 +213,14 @@ patternset:
       - {name: actual_steps_per_execution, type: int, _: "Steps per execution: ${jube_pat_int}"}
       - {name: actual_replicas, type: int, _: "Num replicas: ${jube_pat_int}"}
       - {name: epoch_time_first, type: float, _: "First epoch time: $jube_pat_fp s"}
+      - {name: epoch_time_nonfirst, type: float, _: "Non-first epoch time: $jube_pat_fp s"}
       - {name: epoch_time_min, type: float, _: "Min epoch time: $jube_pat_fp s"}
       - {name: epoch_time_avg, type: float, _: "Mean epoch time: $jube_pat_fp s"}
       - {name: epoch_time_max, type: float, _: "Max epoch time: $jube_pat_fp s"}
       - {name: cpu_mem, type: float, _: "CPU memory:.*peak: $jube_pat_fp GB"}
       - {name: gpu_mem, type: float, _: "GPU memory:.*peak: $jube_pat_fp GB"}
       - {name: performance, type: float, _: "Average performance:\\s+$jube_pat_fp MB/s"}
+      - {name: performance_nonfirst_epoch, type: float, _: "Performance non-first epoch:\\s+$jube_pat_fp MB/s"}
       - {name: performance_min_epoch, type: float, _: "Performance min epoch:\\s+$jube_pat_fp MB/s"}
 
 analyser:
@@ -261,6 +263,8 @@ result:
             # - {title: "avg. epoch time [s]", _: epoch_time_avg}
           - {title: "First epoch [s]", _: epoch_time_first}
           - {title: "Performance [MB/s]", _: performance}
+          - {title: "Non-first epoch [s]", _: epoch_time_nonfirst}
+          - {title: "Performance [MB/s]", _: performance_nonfirst_epoch}
           - {title: "Best epoch [s]", _: epoch_time_min}
           - {title: "Performance [MB/s]", _: performance_min_epoch}
             # - {title: "max epoch time [s]", _: epoch_time_max}
