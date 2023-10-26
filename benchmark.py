@@ -66,8 +66,12 @@ def main():
 
     steps_per_epoch = int(args.dataset_size / 4 / np.product(pred_shape) / args.batch_size)
     # Adjust steps so that it is a multiple of steps_per_execution * replicas
-    steps_per_epoch = (steps_per_epoch // (args.steps_per_execution * args.replica)) * args.steps_per_execution * args.replica
+    steps_per_execution = args.steps_per_execution
+    if steps_per_execution * args.replica > steps_per_epoch:
+        steps_per_execution = steps_per_epoch // args.replica
+    steps_per_epoch = (steps_per_epoch // (steps_per_execution * args.replica)) * steps_per_execution * args.replica
     print("Steps per epoch:", steps_per_epoch)
+    print("Steps per execution:", steps_per_execution)
     dataset = get_dataset(pred_shape, target_shape, steps_per_epoch * args.epochs, args.batch_size)
     # dataset_size_mb = args.dataset_size / 1024 ** 2
     dataset_size_mb = batch_size_mb * steps_per_epoch
@@ -78,7 +82,7 @@ def main():
         learning_rate = 1.0e-5  # Doesn't matter for this benchmark
         optimizer = keras.optimizers.Adam(learning_rate)
         if args.hardware == "ipu":
-            model.compile(optimizer=optimizer, loss=loss, steps_per_execution=args.steps_per_execution)
+            model.compile(optimizer=optimizer, loss=loss, steps_per_execution=steps_per_execution)
         else:
             model.compile(optimizer=optimizer, loss=loss)
 
@@ -140,11 +144,13 @@ def get_dataset(pred_shape, target_shape, num_batches, batch_size):
         tf.data.Dataset
     """
     def get_generator(pred_shape, target_shape, num_samples):
+        # device = "CPU:0"
+        # with tf.device(device):
         def gen():
-            for i in range(num_samples):
-                pred = tf.random.uniform(pred_shape, dtype=tf.float32)
-                target = tf.random.uniform(target_shape, dtype=tf.float32)
-                yield pred, target
+                for i in range(num_samples):
+                    pred = tf.random.uniform(pred_shape, dtype=tf.float32)
+                    target = tf.random.uniform(target_shape, dtype=tf.float32)
+                    yield pred, target
         return gen
 
     output_signature = (tf.TensorSpec(shape=pred_shape, dtype=tf.float32), tf.TensorSpec(shape=target_shape, dtype=tf.float32))
