@@ -10,8 +10,9 @@ os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 import tensorflow as tf
 from tensorflow import keras
 import tensorflow.keras.backend as K
-from .utils import check_horovod, set_gpu_memory_growth,NoStrategy
-from .applications import APPLICATONS_DICT
+from utils import check_horovod, set_gpu_memory_growth,NoStrategy, TimingCallback,print_cpu_usage,print_gpu_usage
+
+from applications import APPLICATIONS_DICT
 
 with_horovod = check_horovod()
 if with_horovod:
@@ -31,7 +32,7 @@ def main():
     parser.add_argument('-w', help='What hardware to run this on', dest='hardware', choices=["gpu", "cpu", "ipu"], required=True)
     parser.add_argument('-s', type=int, help='Steps per execution (for IPU)', dest='steps_per_execution')
     parser.add_argument('-r', default=1, type=int, help='Replica (for IPU)', dest='replica')
-    parser.add_argument('--app', default='AP1', type=str, help='Replica (for IPU)', dest='application')
+    parser.add_argument('--app', default=1, type=int, help='Replica (for IPU)', dest='application')
     parser.add_argument('--debug', help='Turn on debugging information', action="store_true")
     args = parser.parse_args()
 
@@ -80,10 +81,10 @@ def main():
         strategy = NoStrategy()
 
 
-    application=arg.app
+    application=args.application
     application_instance = APPLICATIONS_DICT[application](args,num_processes,with_horovod)    
 
-    if args.app != 'AP3':
+    if application != 3:
         loss = application_instance.get_loss()
     else:
         loss,loss_weigths = application_instance.get_loss()
@@ -108,7 +109,8 @@ def main():
         print("steps_per_epoch:", steps_per_epoch)
         print("steps_per_execution:", steps_per_execution)
 
-    dataset = application_instance.get_dataset(steps_per_epoch * args.epochs, args.batch_size)
+    num_batches = steps_per_epoch * args.epochs
+    dataset = application_instance.get_dataset(num_batches)
     dataset_size_mb = batch_size_mb * steps_per_epoch * num_processes
 
     with strategy.scope():
@@ -119,12 +121,12 @@ def main():
             optimizer = hvd.DistributedOptimizer(optimizer, backward_passes_per_step=1,
                     average_aggregated_gradients=True)
         if args.hardware == "ipu":
-            if args.app != 'AP3':
+            if application != 3 :
                 model.compile(optimizer=optimizer, loss=loss, steps_per_execution=steps_per_execution)
             else:
                 model.compile(optimizer=optimizer, loss=loss, loss_weights=loss_weigths,steps_per_execution=steps_per_execution)
         else:
-            if args.app != 'AP3':
+            if application != 3 :
                 model.compile(optimizer=optimizer, loss=loss)
             else:
                 model.compile(optimizer=optimizer, loss=loss,loss_weights=loss_weigths)

@@ -43,7 +43,6 @@ def set_gpu_memory_growth():
             tf.config.experimental.set_memory_growth(gpu, True)
 
 
-
 def print_gpu_usage(message="", show_line=False):
     try:
         usage = tf.config.experimental.get_memory_info("GPU:0")
@@ -88,11 +87,6 @@ def get_max_memory_usage():
     return resource.getrusage(resource.RUSAGE_SELF).ru_maxrss * 1000
 
 
-def set_gpu_memory_growth():
-    gpus = tf.config.list_physical_devices('GPU')
-    if gpus:
-        for gpu in gpus:
-            tf.config.experimental.set_memory_growth(gpu, True)
 
 class TimingCallback(tf.keras.callbacks.Callback):
     def __init__(self):

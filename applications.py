@@ -15,21 +15,15 @@ from abc import ABC, abstractmethod
 from contextlib import contextmanager
 from pathlib import Path
 from typing import Any, Callable, Dict, Generator, Optional, TextIO, Union
-from .ap1_utils import Dnn, Unet
-from .models import build_cnn, build_fullcnn, build_rnn, load_model
-from climetlab_maelstrom_radiation.benchmarks import losses
+from ap1_utils import Dnn, Unet, quantile_score
+from climetlab_maelstrom_radiation.benchmarks.models import build_cnn, build_fullcnn, build_rnn, load_model
+from climetlab_maelstrom_radiation.benchmarks.losses import top_scaledflux_mae
 from tensorflow.keras.optimizers import Adam
-
-
-APPLICATONS_DICT={
-    'AP1' : AP1_norway_forecast,
-    'AP3': AP3_radiation_emulator
-}
 
 class ApplicationTemplate(ABC):
     """TODO"""
 
-    def __init(
+    def __init__(
         self,
         args,
         num_processes,
@@ -55,11 +49,19 @@ class ApplicationTemplate(ABC):
         return
 
 class AP1_norway_forecast(ApplicationTemplate):
+    """
+    TODO
+    """
 
-    def __init(
+    def __init__(
         self,
+        args,
+        num_processes,
+        with_horovod
     ):
-        super().__init__(self)
+        super().__init__(args = args,
+        num_processes=num_processes,
+        with_horovod=with_horovod)
 
 
     @property
@@ -70,9 +72,9 @@ class AP1_norway_forecast(ApplicationTemplate):
     @property
     def pred_shape(self):
         num_predictors = 17
-        return [1, selg.args.patch_size, selg.args.patch_size, num_predictors]
+        return [1, self.args.patch_size, self.args.patch_size, num_predictors]
 
-    def get_dataset(num_batches):
+    def get_dataset(self,num_batches):
         """ Creates a tf dataset with specified sizes
         Args:
             pred_shape (list): Shape of predictors (for a single sample)
@@ -122,12 +124,20 @@ class AP1_norway_forecast(ApplicationTemplate):
             callbacks += [hvd.keras.callbacks.MetricAverageCallback()]             
         return callbacks
 
+    
 class AP3_radiation_emulator(ApplicationTemplate):
-
-    def __init(
+    """
+    TODO
+    """
+    def __init__(
         self,
+        args,
+        num_processes,
+        with_horovod
     ):
-        super().__init__(self)
+        super().__init__(args = args,
+        num_processes=num_processes,
+        with_horovod=with_horovod)
 
     def get_dataset(self):
         #! TODO
@@ -184,10 +194,10 @@ class AP3_radiation_emulator(ApplicationTemplate):
             loss = {"hr_sw": "mse", "sw": "mse"}
         elif self.args.model == "rnn":
             weights = {"hr_sw": 10 ** (-1), "sw": 1}
-            loss = {"hr_sw": "mae", "sw": losses.top_scaledflux_mae}
+            loss = {"hr_sw": "mae", "sw": top_scaledflux_mae}
         elif self.args.model == "cnn":
             weights = {"hr_sw": 10 ** (-1), "sw": 1}
-            loss = {"hr_sw": "mae", "sw": losses.top_scaledflux_mae}
+            loss = {"hr_sw": "mae", "sw": top_scaledflux_mae}
         else:
             assert False, f"{self.args.model} not configured"
 
@@ -231,4 +241,10 @@ class AP3_radiation_emulator(ApplicationTemplate):
 
         return callbacks
 
-        
+
+    
+APPLICATIONS_DICT={
+    1 : AP1_norway_forecast,
+    3 : AP3_radiation_emulator,
+
+}
