@@ -27,8 +27,8 @@ def main():
     parser.add_argument('-e', default=3, type=int, help='Number of epochs', dest="epochs")
     # parser.add_argument('-s', default=10, type=int, help='Number of batches per epoch', dest="steps_per_epoch")
     parser.add_argument('-d', type=float, help='Dataset size in bytes', dest="dataset_size")
-    parser.add_argument('-m', default="unet", help="Model", dest="model", choices=["unet", "dnn"])
-    parser.add_argument('-p', default=128, type=int, help='Patch size', dest="patch_size")
+    parser.add_argument('-m', default="unet", help="Model", dest="model", required=True) #choices=["unet", "dnn"],)
+    parser.add_argument('-p', default=128, type=int, help='Patch size', dest="patch_size",required=False) 
     parser.add_argument('-w', help='What hardware to run this on', dest='hardware', choices=["gpu", "cpu", "ipu"], required=True)
     parser.add_argument('-s', type=int, help='Steps per execution (for IPU)', dest='steps_per_execution')
     parser.add_argument('-r', default=1, type=int, help='Replica (for IPU)', dest='replica')
@@ -90,9 +90,9 @@ def main():
         loss,loss_weigths = application_instance.get_loss()
 
     # Settings
-    batch_size_mb = 4 * np.product(application_instance.pred_shape) * args.batch_size / 1024 / 1024
+    batch_size_mb = application_instance.get_batch_size_mb()
 
-    steps_per_epoch = int(args.dataset_size / 4 / np.product(application_instance.pred_shape) / args.batch_size / num_processes)
+    steps_per_epoch = int(args.dataset_size / 4 / application_instance.batch_bytes / args.batch_size / num_processes)
     # Adjust steps so that it is a multiple of steps_per_execution * replicas
 
     if args.steps_per_execution is None:
@@ -111,6 +111,7 @@ def main():
 
     num_batches = steps_per_epoch * args.epochs
     dataset = application_instance.get_dataset(num_batches)
+    print(num_batches)
     dataset_size_mb = batch_size_mb * steps_per_epoch * num_processes
 
     with strategy.scope():
@@ -145,6 +146,7 @@ def main():
         # Train the model
         start_time = time.time()
         history = model.fit(dataset, epochs=args.epochs, steps_per_epoch=steps_per_epoch, callbacks=callbacks, verbose=main_process)
+        #history = model.fit(dataset, epochs=args.epochs, callbacks=callbacks, verbose=main_process)
         training_time = time.time() - start_time
 
     # Write out results

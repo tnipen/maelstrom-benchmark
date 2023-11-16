@@ -18,7 +18,9 @@ from typing import Any, Callable, Dict, Generator, Optional, TextIO, Union
 from ap1_utils import Dnn, Unet, quantile_score
 from climetlab_maelstrom_radiation.benchmarks.models import build_cnn, build_fullcnn, build_rnn, load_model
 from climetlab_maelstrom_radiation.benchmarks.losses import top_scaledflux_mae
+from climetlab_maelstrom_radiation.benchmarks.data import load_data
 from tensorflow.keras.optimizers import Adam
+from utils import get_generator
 
 class ApplicationTemplate(ABC):
     """TODO"""
@@ -35,6 +37,14 @@ class ApplicationTemplate(ABC):
 
     def get_dataset(self):
         return
+    
+    @property
+    def target_shape(self):
+        return
+    
+    @property
+    def pred_shape(self):
+        return
 
     def get_model(self):
         return
@@ -47,6 +57,13 @@ class ApplicationTemplate(ABC):
 
     def get_callbacks(self):
         return
+    
+    @property
+    def batch_bytes():
+        return
+    
+    def get_batch_size_mb(self):
+        return 4 * self.batch_bytes * self.args.batch_size / 1024 / 1024
 
 class AP1_norway_forecast(ApplicationTemplate):
     """
@@ -61,7 +78,8 @@ class AP1_norway_forecast(ApplicationTemplate):
     ):
         super().__init__(args = args,
         num_processes=num_processes,
-        with_horovod=with_horovod)
+        with_horovod=with_horovod
+        )
 
 
     @property
@@ -73,6 +91,10 @@ class AP1_norway_forecast(ApplicationTemplate):
     def pred_shape(self):
         num_predictors = 17
         return [1, self.args.patch_size, self.args.patch_size, num_predictors]
+    
+    @property
+    def batch_bytes(self):
+        return np.product(self.pred_shape)
 
     def get_dataset(self,num_batches):
         """ Creates a tf dataset with specified sizes
@@ -85,15 +107,6 @@ class AP1_norway_forecast(ApplicationTemplate):
         Returns:
             tf.data.Dataset
         """
-        def get_generator(pred_shape, target_shape, num_samples):
-            # device = "CPU:0"
-            # with tf.device(device):
-            def gen():
-                    for i in range(num_samples):
-                        pred = tf.random.uniform(pred_shape, dtype=tf.float32)
-                        target = tf.random.uniform(target_shape, dtype=tf.float32)
-                        yield pred, target
-            return gen
 
         output_signature = (tf.TensorSpec(shape=self.pred_shape, dtype=tf.float32), tf.TensorSpec(shape=self.target_shape, dtype=tf.float32))
         dataset = tf.data.Dataset.from_generator(get_generator(self.pred_shape, self.target_shape, int(num_batches * self.args.batch_size)), output_signature=output_signature)
@@ -123,6 +136,7 @@ class AP1_norway_forecast(ApplicationTemplate):
             callbacks += [hvd.keras.callbacks.BroadcastGlobalVariablesCallback(0)]
             callbacks += [hvd.keras.callbacks.MetricAverageCallback()]             
         return callbacks
+    
 
     
 class AP3_radiation_emulator(ApplicationTemplate):
@@ -139,27 +153,70 @@ class AP3_radiation_emulator(ApplicationTemplate):
         num_processes=num_processes,
         with_horovod=with_horovod)
 
-    def get_dataset(self):
-        #! TODO
-        # RETURN EQUIVALENT TO function load_data()
-        # input_spec
-        # https://git.ecmwf.int/projects/MLFET/repos/maelstrom-radiation/browse/climetlab_maelstrom_radiation/benchmarks/data.py
-        # RETURN A DATASET! 
-        return
+#     def get_dataset(self):
+#         tiername = "tier-1" #! TODO CHANGE!!!!      
+#         mode='train'
+#         kwargs = {
+#             "hr_units": "K d-1",
+#             "norm": False,
+#             "dataset": "tripleclouds",
+#             "output_fields": output_fields,
+#         }
+#         output_fields = ["sw", "hr_sw"]
+#         kwargs["minimal_outputs"] = False
+        
+#         if mode in ["val","test"]:
+#             tiername = tiername + f"-{mode}"
+
+#         ds_cml = cml.load_dataset(
+#             "maelstrom-radiation-tf", subset = tiername, **kwargs
+#         )
+
+#         train_num = ds_cml.numcolumns // shard_num
+#         train = ds_cml.to_tfdataset(
+#             batch_size=self.args.batch_size,
+#             shuffle=shuffle,
+#             shard_num=shard_num,
+#             shard_idx=shard_idx,
+#             cache=cache,
+#         )
+#         return
+    
+    def get_dataset(self,num_batches):
+        synthetic_data=False
+        cache=True
+        minimal=False
+        
+        return load_data(mode="train",
+            shuffle=True, 
+            batch_size=self.args.batch_size,
+            synthetic_data=synthetic_data,
+            cache=cache,
+            minimal=False,
+            tier=3, # !TODO CHANGE
+            shard_num=hvd.size() if self.with_horovod else 1,
+            shard_idx=hvd.rank() if self.with_horovod else 0
+            )
+
+    @property
+    def batch_bytes(self):
+        return np.sum([np.product(val.shape.as_list()[1:]) for val in self.pred_shape.values()])
 
 
     @property
     def target_shape(self):
-        #! TODO
-        # RETURN THE EQUIVALENT TO RETURN A train.element_spec[1]
-        return
+        return {'sw': tf.TensorSpec(shape=(None, 138, 2), dtype=tf.float32, name=None),
+              'hr_sw': tf.TensorSpec(shape=(None, 137, 1), dtype=tf.float32, name=None)}
 
 
     @property
     def pred_shape(self):
-        #! TODO
-        # RETURN THE EQUIVALENT TO RETURN A train.element_spec[0]
-        return 
+        return {'sca_inputs': tf.TensorSpec(shape=(None, 17), dtype=tf.float32, name=None),
+         'col_inputs':  tf.TensorSpec(shape=(None, 137, 27), dtype=tf.float32, name=None),
+         'hl_inputs':  tf.TensorSpec(shape=(None, 138, 2), dtype=tf.float32, name=None),
+         'inter_inputs':  tf.TensorSpec(shape=(None, 136, 1), dtype=tf.float32, name=None),
+         'pressure_hl':  tf.TensorSpec(shape=(None, 138, 1), dtype=tf.float32, name=None)}
+
 
     def get_model(self):
         dl_test=False
