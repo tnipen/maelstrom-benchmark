@@ -20,6 +20,7 @@ class NoStrategy:
                 pass
         return Scope()
 
+    
 def check_horovod():
     """Check if we should run with horovod based on environment variables
 

@@ -18,9 +18,8 @@ from typing import Any, Callable, Dict, Generator, Optional, TextIO, Union
 from ap1_utils import Dnn, Unet, quantile_score
 from climetlab_maelstrom_radiation.benchmarks.models import build_cnn, build_fullcnn, build_rnn, load_model
 from climetlab_maelstrom_radiation.benchmarks.losses import top_scaledflux_mae
-from climetlab_maelstrom_radiation.benchmarks.data import load_data
+#from climetlab_maelstrom_radiation.benchmarks.data import load_data
 from tensorflow.keras.optimizers import Adam
-from utils import get_generator
 
 class ApplicationTemplate(ABC):
     """TODO"""
@@ -37,6 +36,16 @@ class ApplicationTemplate(ABC):
 
     def get_dataset(self):
         return
+    
+    def _get_generator(self,pred_shape, target_shape, num_samples):
+        # device = "CPU:0"
+        # with tf.device(device):
+        def gen():
+                for i in range(num_samples):
+                    pred = tf.random.uniform(pred_shape, dtype=tf.float32)
+                    target = tf.random.uniform(target_shape, dtype=tf.float32)
+                    yield pred, target
+        return gen
     
     @property
     def target_shape(self):
@@ -107,9 +116,9 @@ class AP1_norway_forecast(ApplicationTemplate):
         Returns:
             tf.data.Dataset
         """
-
+        num_samples=int(num_batches * self.args.batch_size)
         output_signature = (tf.TensorSpec(shape=self.pred_shape, dtype=tf.float32), tf.TensorSpec(shape=self.target_shape, dtype=tf.float32))
-        dataset = tf.data.Dataset.from_generator(get_generator(self.pred_shape, self.target_shape, int(num_batches * self.args.batch_size)), output_signature=output_signature)
+        dataset = tf.data.Dataset.from_generator(self._get_generator(self.pred_shape, self.target_shape, num_samples), output_signature=output_signature)
 
         # drop_remainder needed for IPU:
         dataset = dataset.batch(self.args.batch_size, drop_remainder=True)
@@ -152,51 +161,73 @@ class AP3_radiation_emulator(ApplicationTemplate):
         super().__init__(args = args,
         num_processes=num_processes,
         with_horovod=with_horovod)
-
-#     def get_dataset(self):
-#         tiername = "tier-1" #! TODO CHANGE!!!!      
-#         mode='train'
-#         kwargs = {
-#             "hr_units": "K d-1",
-#             "norm": False,
-#             "dataset": "tripleclouds",
-#             "output_fields": output_fields,
-#         }
-#         output_fields = ["sw", "hr_sw"]
-#         kwargs["minimal_outputs"] = False
         
-#         if mode in ["val","test"]:
-#             tiername = tiername + f"-{mode}"
+    def _dict_gen(self,num_samples):
+        def gen():
+            for i in range(num_samples):
+                ls = {}
+                out = {}
 
-#         ds_cml = cml.load_dataset(
-#             "maelstrom-radiation-tf", subset = tiername, **kwargs
-#         )
+                preds = {'sca_inputs': tf.random.uniform(shape=(num_samples,17),dtype=tf.float32),
+                            'col_inputs': tf.random.uniform(shape=(num_samples,137, 27),dtype=tf.float32),
+                            'hl_inputs': tf.random.uniform(shape=(num_samples,138, 2),dtype=tf.float32),
+                            'inter_inputs': tf.random.uniform(shape=(num_samples,136, 1),dtype=tf.float32),
+                            'pressure_hl': tf.random.uniform(shape=(num_samples, 138, 1),dtype=tf.float32),
+                           }
+                targets = {'sw': tf.random.uniform(shape=(num_samples,138,2),dtype=tf.float32),
+                                'hr_sw': tf.random.uniform(shape=(num_samples,137,1),dtype=tf.float32)}
 
-#         train_num = ds_cml.numcolumns // shard_num
-#         train = ds_cml.to_tfdataset(
-#             batch_size=self.args.batch_size,
-#             shuffle=shuffle,
-#             shard_num=shard_num,
-#             shard_idx=shard_idx,
-#             cache=cache,
-#         )
-#         return
-    
+                for key, val in preds.items():
+                    ls[key] = val[i]
+                for key, val in targets.items():
+                    out[key] = val[i]
+                yield ls,out
+        return gen
+
     def get_dataset(self,num_batches):
-        synthetic_data=False
-        cache=True
-        minimal=False
+        num_samples=int(num_batches * self.args.batch_size)
+
+        preds = {'sca_inputs': tf.random.uniform(shape=(num_samples,17),dtype=tf.float32),
+                 'col_inputs': tf.random.uniform(shape=(num_samples,137, 27),dtype=tf.float32),
+                 'hl_inputs': tf.random.uniform(shape=(num_samples,138, 2),dtype=tf.float32),
+                 'inter_inputs': tf.random.uniform(shape=(num_samples,136, 1),dtype=tf.float32),
+                 'pressure_hl': tf.random.uniform(shape=(num_samples, 138, 1),dtype=tf.float32),
+                   }
+        targets = {'sw': tf.random.uniform(shape=(num_samples,138,2),dtype=tf.float32),
+                    'hr_sw': tf.random.uniform(shape=(num_samples,137,1),dtype=tf.float32)}
+
+        dataset = tf.data.Dataset.from_generator(
+            self._dict_gen(num_samples),
+            output_types=({k: tf.float32 for k in preds},{k: tf.float32 for k in targets}),
+            output_shapes=({'sca_inputs': (17),
+                            'col_inputs': (137,27),
+                            'hl_inputs': (138,2),
+                            'inter_inputs': (136,1),
+                            'pressure_hl': (138,1),
+                           },
+                           {'sw': (138,2), 
+                            'hr_sw': (137,1)
+                           }))
+
+        dataset = dataset.batch(self.args.batch_size, drop_remainder=True)
+        return dataset
+    
+    
+#     def get_dataset(self,num_batches):
+#         synthetic_data=False
+#         cache=True
+#         minimal=False
         
-        return load_data(mode="train",
-            shuffle=True, 
-            batch_size=self.args.batch_size,
-            synthetic_data=synthetic_data,
-            cache=cache,
-            minimal=False,
-            tier=3, # !TODO CHANGE
-            shard_num=hvd.size() if self.with_horovod else 1,
-            shard_idx=hvd.rank() if self.with_horovod else 0
-            )
+#         return load_data(mode="train",
+#             shuffle=True, 
+#             batch_size=self.args.batch_size,
+#             synthetic_data=synthetic_data,
+#             cache=cache,
+#             minimal=False,
+#             tier=3, # !TODO CHANGE
+#             shard_num=hvd.size() if self.with_horovod else 1,
+#             shard_idx=hvd.rank() if self.with_horovod else 0
+#             )
 
     @property
     def batch_bytes(self):
@@ -251,7 +282,8 @@ class AP3_radiation_emulator(ApplicationTemplate):
             loss = {"hr_sw": "mse", "sw": "mse"}
         elif self.args.model == "rnn":
             weights = {"hr_sw": 10 ** (-1), "sw": 1}
-            loss = {"hr_sw": "mae", "sw": top_scaledflux_mae}
+#            loss = {"hr_sw": "mae", "sw": top_scaledflux_mae}
+            loss = {"hr_sw": "mae", "sw": "mae"}
         elif self.args.model == "cnn":
             weights = {"hr_sw": 10 ** (-1), "sw": 1}
             loss = {"hr_sw": "mae", "sw": top_scaledflux_mae}

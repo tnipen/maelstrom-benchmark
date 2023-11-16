@@ -32,9 +32,10 @@ def main():
     parser.add_argument('-w', help='What hardware to run this on', dest='hardware', choices=["gpu", "cpu", "ipu"], required=True)
     parser.add_argument('-s', type=int, help='Steps per execution (for IPU)', dest='steps_per_execution')
     parser.add_argument('-r', default=1, type=int, help='Replica (for IPU)', dest='replica')
-    parser.add_argument('--app', default=1, type=int, help='Replica (for IPU)', dest='application')
+    parser.add_argument('--app', default=1, type=int, help='Replica (for IPU)', dest='application',required=True)
     parser.add_argument('--debug', help='Turn on debugging information', action="store_true")
     args = parser.parse_args()
+    print(args)
 
     # strategy 1
     #   batch size (samples/batch)
@@ -52,6 +53,7 @@ def main():
         strategy = NoStrategy()
     elif args.hardware == "ipu":
         from tensorflow.python import ipu
+        print('configuring IPU')
         ipu_config = ipu.config.IPUConfig()
         ipu_config.device_connection.type = (
                     ipu.config.DeviceConnectionType.ON_DEMAND
@@ -62,6 +64,7 @@ def main():
         # ipu_config.io_tiles.place_ops_on_io_tiles = True
 
         strategy = ipu.ipu_strategy.IPUStrategy()
+        print('IPU ready')
     else:
         gpus = tf.config.experimental.list_physical_devices("GPU")
 
@@ -146,7 +149,6 @@ def main():
         # Train the model
         start_time = time.time()
         history = model.fit(dataset, epochs=args.epochs, steps_per_epoch=steps_per_epoch, callbacks=callbacks, verbose=main_process)
-        #history = model.fit(dataset, epochs=args.epochs, callbacks=callbacks, verbose=main_process)
         training_time = time.time() - start_time
 
     # Write out results
