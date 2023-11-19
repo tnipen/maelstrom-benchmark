@@ -13,6 +13,12 @@ The JUBE file contains 4 tags:
 - jwc (using V100 GPUs). This must be scheduled from a JUWELS-cluster login node.
 - intel (using Intel CPUs). This must be scheduled from a JUWELS-cluster login node.
 
+To run JUBE, first edit jube/jube.yaml to set the settings for the benchmark. Then run JUBE like this:
+```
+cd jube/
+jube run jube.yaml -t jwb
+```
+
 ### Running the benchmark manually
 
 Run the benchmark script as follows:
