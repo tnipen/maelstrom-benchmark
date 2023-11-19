@@ -11,7 +11,7 @@ def get(name, patch_size):
     if name == "ap1":
         return AP1(patch_size=patch_size)
     else:
-        raise NotImplementedError()
+        raise NotImplementedError(f"Unknown application {name}")
 
 class Application:
     """Abstract class representing a MAELSTROM application"""

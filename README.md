@@ -35,4 +35,6 @@ python3 benchmark.py --help
 
 ### Adding a new application
 
-Add a new subclass of Application in `applications.py`.
+1) Add a new subclass of Application in `applications.py`.
+2) Add a line in the `get` function to connect your application.
+3) Change the "app" parameter in the JUBE file to match your application.

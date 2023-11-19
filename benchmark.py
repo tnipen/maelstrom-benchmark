@@ -32,7 +32,7 @@ def check_horovod():
 """This benchmark scripts checks training performance on GPU, CPU, and IPU"""
 def main():
     parser = argparse.ArgumentParser("Program to compare the performance of IPUs and GPUs")
-    parser.add_argument('-a', default="ap1", help="Run this model", dest="app_name", choices=["ap1", "dnn"])
+    parser.add_argument('-a', default="ap1", help="Run this model", dest="app_name")
     parser.add_argument('-e', default=3, type=int, help='Number of epochs', dest="epochs")
     parser.add_argument('-d', type=float, help='Dataset size in bytes', dest="dataset_size", required=True)
     parser.add_argument('-b', default=1, type=int, help="Batch size (number of samples per batch)", dest="batch_size")
