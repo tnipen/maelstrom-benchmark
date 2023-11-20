@@ -70,7 +70,7 @@ parameterset:
       - name: replica
         tag: ipu
         type: int
-        _: 1, 2, 4
+        _: 1 #, 2, 4
       - name: replica
         tag: "!ipu"
         type: int
@@ -78,7 +78,7 @@ parameterset:
       - name: steps_per_execution
         tag: ipu
         type: int
-        _: 1, 2, 4
+        _: 1 #, 2, 4
       - name: steps_per_execution
         tag: "!ipu"
         type: int
@@ -86,33 +86,29 @@ parameterset:
       - name: dataset_size
         tag: "!intel+!amd+!jwc"
         type: int
-        # _: 4294967296
         _: 34359738368
       - name: dataset_size
         tag: "jwc"
         type: int
-        # _: 4294967296
-        # _: 34359738368
         _: 17179869184
       - name: dataset_size
         # Use a smaller dataset for CPU benchmarks, otherwise it takes forever
         tag: intel|amd
         type: int
         _: 1073741824
-        # _: 34359738368
       - name: patch_size
         type: int
-        _: 128
-      - name: model
+        _: 512
+      - name: app
         type: string
-        _: unet
+        _: ap1
       - name: program_args
         type: string
-        # _: "-m ${model} -b ${batch_size} -e ${nepochs} -s ${batches_per_epoch} -p ${patch_size} -w ${hardware}"
-        _: "-m ${model} -b ${batch_size} -e ${nepochs} -d ${dataset_size} -p ${patch_size} -w ${hardware} -s ${steps_per_execution} -r ${replica}"
+        _: "-a ${app} -b ${batch_size} -e ${nepochs} -d ${dataset_size} -p ${patch_size} -w ${hardware} -s ${steps_per_execution} -r ${replica}"
   - name: globalParameter
     parameter:
       - name: modules
+        # ipu doesn't need any modules loaded, because it runs in the container
         tag: "jwb|jwc|amd|intel"
         separator: |
         _: 
@@ -161,7 +157,11 @@ parameterset:
       - name: nodes
         _: 1
       - name: n_procs
+        tag: "!ipu"
         _: 4
+      - name: n_procs
+        tag: ipu
+        _: 1
       - name: n_gpu
         _: $n_procs
       - name: taskspernode

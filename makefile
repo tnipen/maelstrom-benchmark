@@ -1,5 +1,5 @@
 # Use this makefile to create the container for running with IPUs
-.default: benchmark.sif
+default: benchmark.sif
 
 tensorflow.sif:
 	apptainer build $@ docker://docker.io/graphcore/tensorflow:2
