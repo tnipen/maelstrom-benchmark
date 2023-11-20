@@ -267,7 +267,7 @@ class AP3(Application):
                 lr = lr / 2
 
         true_lr = lr * self.args.batch_size / 256 * self.num_processes 
-        opt = keras.optimizers.AdamAdam(true_lr)
+        opt = keras.optimizers.Adam(true_lr)
         return opt
 
     def get_callbacks(self,callbacks):

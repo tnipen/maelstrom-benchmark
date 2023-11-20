@@ -3,16 +3,14 @@ import numpy as np
 import os
 import socket
 import time
-import horovod.tensorflow as hvd
 
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 import tensorflow as tf
 from tensorflow import keras
 import tensorflow.keras.backend as K
 
-import applications
+from climetlab_maelstrom_radiation.benchmarks.models import build_rnn #otherwise it crashes (FIGURE OUT WHY!)
 from utils import check_horovod, set_gpu_memory_growth,NoStrategy, TimingCallback,print_cpu_usage,print_gpu_usage
-import horovod.tensorflow as hvd
 import applications
 
 
@@ -46,6 +44,8 @@ def main():
     main_process = True
     num_processes = 1
     with_horovod = check_horovod()    
+    if with_horovod:
+        import horovod.tensorflow as hvd
     print(f"Running with horovod? {with_horovod}")
     
     if args.hardware == "cpu":
@@ -112,18 +112,18 @@ def main():
         model = app.get_model()
         optimizer = app.get_optimizer()
 
-        if args.app_name != 3:
+        if args.app_name != 'ap3':
             loss = app.get_loss_function()
         else:
             loss,loss_weights = app.get_loss_function()
         
         if args.hardware == "ipu":
-            if args.app_name != 3 :
+            if args.app_name != 'ap3' :
                 model.compile(optimizer=optimizer, loss=loss, steps_per_execution=steps_per_execution)
             else:
                 model.compile(optimizer=optimizer, loss=loss, loss_weights=loss_weights,steps_per_execution=steps_per_execution)
         else:
-            if args.app_name != 3 :
+            if args.app_name != 'ap3' :
                 model.compile(optimizer=optimizer, loss=loss)
             else:
                 model.compile(optimizer=optimizer, loss=loss,loss_weights=loss_weights) 
@@ -131,8 +131,7 @@ def main():
         # Print out dataset
         # for k,v in dataset:
         #     print(k.shape, v.shape)
-
-    
+        
         callbacks = list()
         callbacks = app.get_callbacks(callbacks)
         if main_process:
