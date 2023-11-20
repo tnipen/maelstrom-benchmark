@@ -169,7 +169,7 @@ parameterset:
       - name: threadspertask
         mode: python
         type: int
-        _:  $n_cpu // $n_procs
+        _: 12
       - name: timelimit
         _: "00:15:00"
       - name: account

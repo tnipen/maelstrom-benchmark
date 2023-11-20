@@ -2,7 +2,12 @@ Bootstrap: localimage
 From: tensorflow.sif
 
 %post
-    pip install argparse gridpp==0.6.0 "netCDF4<1.6.0" numpy pyyaml tensorflow tqdm scipy PyYAML horovod xarray dask psutil
+    pip install argparse gridpp==0.6.0 "netCDF4<1.6.0" numpy pyyaml tensorflow tqdm scipy PyYAML xarray dask psutil
+    # horovod REMVOE FOR NOW
     pip install climetlab==0.11.9
-    pip install climetlab-maelstrom-radiation
+    pip install climetlab-maelstrom-radiation==0.7.4
+    pip install "dask[array]" --upgrade
+    #pip install ecmwflibs
+    #pip install eccodes
+    
 # -r requirements.txt # psutil xarray

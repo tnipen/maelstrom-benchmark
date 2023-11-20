@@ -164,50 +164,61 @@ class AP3_radiation_emulator(ApplicationTemplate):
         
     def _dict_gen(self,num_samples):
         def gen():
-            for i in range(num_samples):
-                ls = {}
-                out = {}
-
-                preds = {'sca_inputs': tf.random.uniform(shape=(num_samples,17),dtype=tf.float32),
-                            'col_inputs': tf.random.uniform(shape=(num_samples,137, 27),dtype=tf.float32),
-                            'hl_inputs': tf.random.uniform(shape=(num_samples,138, 2),dtype=tf.float32),
-                            'inter_inputs': tf.random.uniform(shape=(num_samples,136, 1),dtype=tf.float32),
-                            'pressure_hl': tf.random.uniform(shape=(num_samples, 138, 1),dtype=tf.float32),
+            preds = {'sca_inputs': tf.random.uniform(shape=(17,),dtype=tf.float32),
+                         'col_inputs': tf.random.uniform(shape=(137,27),dtype=tf.float32),
+                         'hl_inputs': tf.random.uniform(shape=(138,2),dtype=tf.float32),
+                         'inter_inputs': tf.random.uniform(shape=(136,1),dtype=tf.float32) ,
+                         'pressure_hl': tf.random.uniform(shape=(138,1),dtype=tf.float32),
                            }
-                targets = {'sw': tf.random.uniform(shape=(num_samples,138,2),dtype=tf.float32),
-                                'hr_sw': tf.random.uniform(shape=(num_samples,137,1),dtype=tf.float32)}
 
-                for key, val in preds.items():
-                    ls[key] = val[i]
-                for key, val in targets.items():
-                    out[key] = val[i]
-                yield ls,out
+            targets = {'sw':tf.random.uniform(shape=(138,2),dtype=tf.float32),
+                          'hr_sw':tf.random.uniform(shape=(137,1),dtype=tf.float32),
+                          }
+            for i in range(num_samples):
+                #tensor= tf.random.uniform(shape=(138,27),dtype=tf.float32)
+#                 preds = {'sca_inputs': tensor[:17,0],
+#                          'col_inputs': tensor[:-1,:],
+#                          'hl_inputs': tensor[:,:2],
+#                          'inter_inputs': tensor[:-2,:1] ,
+#                          'pressure_hl': tensor[:,:1],
+#                            }
+
+#                 targets = {'sw':tensor[:,:2],
+#                           'hr_sw':tensor[:-1,:1]
+#                           }
+
+#                 preds = {'sca_inputs': tf.random.uniform(shape=(17,),dtype=tf.float32),
+#                          'col_inputs': tf.random.uniform(shape=(137,27),dtype=tf.float32),
+#                          'hl_inputs': tf.random.uniform(shape=(138,2),dtype=tf.float32),
+#                          'inter_inputs': tf.random.uniform(shape=(136,1),dtype=tf.float32) ,
+#                          'pressure_hl': tf.random.uniform(shape=(138,1),dtype=tf.float32),
+#                            }
+
+#                 targets = {'sw':tf.random.uniform(shape=(138,2),dtype=tf.float32),
+#                           'hr_sw':tf.random.uniform(shape=(137,1),dtype=tf.float32),
+#                           }
+
+                yield preds,targets
         return gen
 
     def get_dataset(self,num_batches):
         num_samples=int(num_batches * self.args.batch_size)
-
-        preds = {'sca_inputs': tf.random.uniform(shape=(num_samples,17),dtype=tf.float32),
-                 'col_inputs': tf.random.uniform(shape=(num_samples,137, 27),dtype=tf.float32),
-                 'hl_inputs': tf.random.uniform(shape=(num_samples,138, 2),dtype=tf.float32),
-                 'inter_inputs': tf.random.uniform(shape=(num_samples,136, 1),dtype=tf.float32),
-                 'pressure_hl': tf.random.uniform(shape=(num_samples, 138, 1),dtype=tf.float32),
-                   }
-        targets = {'sw': tf.random.uniform(shape=(num_samples,138,2),dtype=tf.float32),
-                    'hr_sw': tf.random.uniform(shape=(num_samples,137,1),dtype=tf.float32)}
+        output_signature = ({
+                            'sca_inputs':tf.TensorSpec(shape=(17), dtype=tf.float32),
+                            'col_inputs':tf.TensorSpec(shape=(137,27), dtype=tf.float32),
+                            'hl_inputs':tf.TensorSpec(shape=(138,2), dtype=tf.float32),
+                            'inter_inputs':tf.TensorSpec(shape=(136,1), dtype=tf.float32),
+                            'pressure_hl':tf.TensorSpec(shape=(138,1), dtype=tf.float32)
+                            }, 
+                            {'sw':tf.TensorSpec(shape=(138,2), dtype=tf.float32),
+                            'hr_sw':tf.TensorSpec(shape=(137,1), dtype=tf.float32)
+                            }
+                            )
 
         dataset = tf.data.Dataset.from_generator(
             self._dict_gen(num_samples),
-            output_types=({k: tf.float32 for k in preds},{k: tf.float32 for k in targets}),
-            output_shapes=({'sca_inputs': (17),
-                            'col_inputs': (137,27),
-                            'hl_inputs': (138,2),
-                            'inter_inputs': (136,1),
-                            'pressure_hl': (138,1),
-                           },
-                           {'sw': (138,2), 
-                            'hr_sw': (137,1)
-                           }))
+            output_signature=output_signature
+            )
 
         dataset = dataset.batch(self.args.batch_size, drop_remainder=True)
         return dataset
