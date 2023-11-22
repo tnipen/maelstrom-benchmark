@@ -6,10 +6,7 @@ import time
 
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 import tensorflow as tf
-from tensorflow import keras
 import tensorflow.keras.backend as K
-
-from climetlab_maelstrom_radiation.benchmarks.models import build_rnn #otherwise it crashes (FIGURE OUT WHY!)
 from utils import check_horovod, set_gpu_memory_growth,NoStrategy, TimingCallback,print_cpu_usage,print_gpu_usage
 import applications
 

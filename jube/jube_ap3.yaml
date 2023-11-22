@@ -18,10 +18,14 @@ parameterset:
       - name: program
         tag: "ipu"
         type: string
-        _: apptainer run $jube_benchmark_home/../benchmark.sif -- python -u $jube_benchmark_home/../benchmark.py
+        _: apptainer run $jube_benchmark_home/../ap3.sif -- python -u $jube_benchmark_home/../benchmark.py
       - name: hardware_name
         type: string
         tag: jwb
+        _: A100_GPU
+      - name: hardware_name
+        type: string
+        tag: jrc
         _: A100_GPU
       - name: hardware_name
         type: string
@@ -41,7 +45,7 @@ parameterset:
         _: AMD_EPYC_2.8GHz
       - name: hardware
         type: string
-        tag: jwb|jwc
+        tag: jwb|jwc|jrc
         _: gpu
       - name: hardware
         type: string
@@ -66,7 +70,7 @@ parameterset:
         # _: 80, 160, 320, 640
       - name: batch_size
         type: int
-        _: 1
+        _: 512
       - name: replica
         tag: ipu
         type: int
@@ -86,30 +90,31 @@ parameterset:
       - name: dataset_size
         tag: "!intel+!amd+!jwc"
         type: int
-        _: 34359738368
+        _: 4294967296 
       - name: dataset_size
         tag: "jwc"
         type: int
         _: 17179869184
       - name: dataset_size
+        tag: "jrc"
+        type: int
+        _: 4294967296
+      - name: dataset_size
         # Use a smaller dataset for CPU benchmarks, otherwise it takes forever
         tag: intel|amd
         type: int
         _: 1073741824
-      - name: patch_size
-        type: int
-        _: 512
       - name: app
         type: string
-        _: ap1
+        _: ap3
       - name: program_args
         type: string
-        _: "-a ${app} -b ${batch_size} -e ${nepochs} -d ${dataset_size} -p ${patch_size} -w ${hardware} -s ${steps_per_execution} -r ${replica}"
+        _: "-a ${app} -b ${batch_size} -e ${nepochs} -d ${dataset_size} -w ${hardware} -s ${steps_per_execution} -r ${replica}"
   - name: globalParameter
     parameter:
       - name: modules
         # ipu doesn't need any modules loaded, because it runs in the container
-        tag: "jwb|jwc|amd|intel"
+        tag: "jwb|jwc|amd|intel|jrc"
         separator: |
         _: 
           module load Stages/2022 &&
@@ -122,6 +127,9 @@ parameterset:
       - name: systemname
         tag: jwc
         _: jwc
+      - name: systemname
+        tag: jrc
+        _: jrc
       - name: systemname
         tag: jwb
         _: jwb
@@ -141,7 +149,7 @@ parameterset:
     parameter:
       - name: preprocess
         mode: text
-        tag: "jwb|jwc|amd|intel"
+        tag: "jwb|jwc|amd|intel|jrc"
         _:
           $modules;
           # source $jube_benchmark_home/.venv_${systemname}/bin/activate;
@@ -150,6 +158,7 @@ parameterset:
       - {name: n_cpu, _: 48, tag: amd}
       - {name: n_cpu, _: 48, tag: intel}
       - {name: n_cpu, _: 40, tag: jwc}
+      - {name: n_cpu, _: 48, tag: jrc}
       - {name: n_cpu, _: 48, tag: ipu}
       - name: SRUN_CPUS_PER_TASK
         export: true
@@ -171,13 +180,19 @@ parameterset:
         type: int
         _:  $n_cpu // $n_procs
       - name: timelimit
-        _: "00:15:00"
+        _: "00:20:00"
       - name: account
-        tag: jwb|jwc|amd|intel
+        tag: jwb|jwc|amd|intel|jrc
         _: deepacf
+      - name: account
+        tag: jrc
+        _: training2330
       - name: account
         tag: ipu
         _: exalab
+      - name: queue
+        tag: jwb|amd
+        _: booster
       - name: queue
         tag: jwb|amd
         _: booster
@@ -190,8 +205,11 @@ parameterset:
       - name: queue
         tag: ipu
         _: dc-ipu
+      - name: queue
+        tag: jrc
+        _: dc-gpu
       - name: gres
-        tag: jwb|jwc
+        tag: jwb|jwc|jrc
         _: gpu:$n_gpu
       - name: executable
         _: ${program}
@@ -251,7 +269,6 @@ result:
           - {title: "Processes", _: n_procs}
           - {title: "Dataset size [MB]", _: dataset_size_mb}
           - {title: "Samples per batch", _: batch_size}
-          - {title: "Patch size", _: patch_size}
           - {title: "Batch size [MB]", _: batch_size_mb}
           - {title: "Batches per epoch", _: batches_per_epoch}
           - {title: "Epochs", _: nepochs}

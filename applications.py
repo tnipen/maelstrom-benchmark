@@ -1,12 +1,11 @@
 from tensorflow import keras
 import horovod.tensorflow as hvd
+import horovod.keras.callbacks as hvd_callbacks
 import tensorflow as tf
 
 import losses
 import models
 import numpy as np
-from climetlab_maelstrom_radiation.benchmarks.models import build_rnn
-from climetlab_maelstrom_radiation.benchmarks.losses import top_scaledflux_mae
 
 
 def get(name, args,num_processes,with_horovod):
@@ -145,8 +144,8 @@ class AP1(Application):
 
     def get_callbacks(self,callbacks):
         if self.with_horovod:
-            callbacks += [hvd.keras.callbacks.BroadcastGlobalVariablesCallback(0)]
-            callbacks += [hvd.keras.callbacks.MetricAverageCallback()]             
+            callbacks += [hvd_callbacks.BroadcastGlobalVariablesCallback(0)]
+            callbacks += [hvd_callbacks.MetricAverageCallback()]             
         return callbacks
     
     
@@ -247,7 +246,7 @@ class AP3(Application):
 
     def get_model(self):
         dl_test=False
-        return build_rnn(
+        return models.build_rnn(
                 self.input_shape,
                 self.target_shape,
                 dl_test=dl_test
@@ -285,7 +284,7 @@ class AP3(Application):
             ),
         ]
         if self.with_horovod:
-            callbacks.append(hvd.callbacks.BroadcastGlobalVariablesCallback(0))
-            callbacks.append(hvd.callbacks.MetricAverageCallback())
+            callbacks.append(hvd_callbacks.BroadcastGlobalVariablesCallback(0))
+            callbacks.append(hvd_callbacks.MetricAverageCallback())
 
         return callbacks
