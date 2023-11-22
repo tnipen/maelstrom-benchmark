@@ -6,6 +6,7 @@ import resource
 import socket
 import time
 import horovod.tensorflow as hvd
+import horovod.keras.callbacks as hvd_callbacks
 
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 import tensorflow as tf
@@ -132,8 +133,8 @@ def main():
 
         callbacks = list()
         if with_horovod:
-            callbacks += [hvd.keras.callbacks.BroadcastGlobalVariablesCallback(0)]
-            callbacks += [hvd.keras.callbacks.MetricAverageCallback()]
+            callbacks += [hvd_callbacks.BroadcastGlobalVariablesCallback(0)]
+            callbacks += [hvd_callbacks.MetricAverageCallback()]
         if main_process:
             timing_callback = TimingCallback()
             callbacks += [timing_callback]
