@@ -1,6 +1,4 @@
 from tensorflow import keras
-import horovod.tensorflow as hvd
-import horovod.keras.callbacks as hvd_callbacks
 import tensorflow as tf
 
 import losses
@@ -68,6 +66,8 @@ class Application:
         learning_rate = 1.0e-5  # Doesn't matter for this benchmark
         optimizer = keras.optimizers.Adam(learning_rate)
         if self.with_horovod:
+            import horovod.tensorflow as hvd
+            import horovod.keras.callbacks as hvd_callbacks
             optimizer = hvd.DistributedOptimizer(optimizer, backward_passes_per_step=1,
                     average_aggregated_gradients=True)
         return optimizer
@@ -144,6 +144,8 @@ class AP1(Application):
 
     def get_callbacks(self,callbacks):
         if self.with_horovod:
+            import horovod.tensorflow as hvd
+            import horovod.keras.callbacks as hvd_callbacks
             callbacks += [hvd_callbacks.BroadcastGlobalVariablesCallback(0)]
             callbacks += [hvd_callbacks.MetricAverageCallback()]             
         return callbacks
@@ -162,66 +164,32 @@ class AP3(Application):
         super().__init__(args = args,
         num_processes=num_processes,
         with_horovod=with_horovod)
-        
-    def _dict_gen(self,num_samples):
-        def gen():
-            preds = {'sca_inputs': tf.random.uniform(shape=(17,),dtype=tf.float32),
-                         'col_inputs': tf.random.uniform(shape=(137,27),dtype=tf.float32),
-                         'hl_inputs': tf.random.uniform(shape=(138,2),dtype=tf.float32),
-                         'inter_inputs': tf.random.uniform(shape=(136,1),dtype=tf.float32) ,
-                         'pressure_hl': tf.random.uniform(shape=(138,1),dtype=tf.float32),
-                           }
 
-            targets = {'sw':tf.random.uniform(shape=(138,2),dtype=tf.float32),
-                          'hr_sw':tf.random.uniform(shape=(137,1),dtype=tf.float32),
-                          }
-            for i in range(num_samples):
-                #tensor= tf.random.uniform(shape=(138,27),dtype=tf.float32)
-#                 preds = {'sca_inputs': tensor[:17,0],
-#                          'col_inputs': tensor[:-1,:],
-#                          'hl_inputs': tensor[:,:2],
-#                          'inter_inputs': tensor[:-2,:1] ,
-#                          'pressure_hl': tensor[:,:1],
-#                            }
-
-#                 targets = {'sw':tensor[:,:2],
-#                           'hr_sw':tensor[:-1,:1]
-#                           }
-
-#                 preds = {'sca_inputs': tf.random.uniform(shape=(17,),dtype=tf.float32),
-#                          'col_inputs': tf.random.uniform(shape=(137,27),dtype=tf.float32),
-#                          'hl_inputs': tf.random.uniform(shape=(138,2),dtype=tf.float32),
-#                          'inter_inputs': tf.random.uniform(shape=(136,1),dtype=tf.float32) ,
-#                          'pressure_hl': tf.random.uniform(shape=(138,1),dtype=tf.float32),
-#                            }
-
-#                 targets = {'sw':tf.random.uniform(shape=(138,2),dtype=tf.float32),
-#                           'hr_sw':tf.random.uniform(shape=(137,1),dtype=tf.float32),
-#                           }
-
-                yield preds,targets
-        return gen
 
     def get_dataset(self,num_batches):
         num_samples=int(num_batches * self.args.batch_size)
-        output_signature = ({
-                            'sca_inputs':tf.TensorSpec(shape=(17), dtype=tf.float32),
-                            'col_inputs':tf.TensorSpec(shape=(137,27), dtype=tf.float32),
-                            'hl_inputs':tf.TensorSpec(shape=(138,2), dtype=tf.float32),
-                            'inter_inputs':tf.TensorSpec(shape=(136,1), dtype=tf.float32),
-                            'pressure_hl':tf.TensorSpec(shape=(138,1), dtype=tf.float32)
-                            }, 
-                            {'sw':tf.TensorSpec(shape=(138,2), dtype=tf.float32),
-                            'hr_sw':tf.TensorSpec(shape=(137,1), dtype=tf.float32)
-                            }
-                            )
 
-        dataset = tf.data.Dataset.from_generator(
-            self._dict_gen(num_samples),
-            output_signature=output_signature
-            )
+        # Your dictionary of arrays
+        preds = {'sca_inputs': tf.random.uniform(shape=(num_samples,17),dtype=tf.float32),
+                 'col_inputs': tf.random.uniform(shape=(num_samples,137,27),dtype=tf.float32),
+                 'hl_inputs': tf.random.uniform(shape=(num_samples,138,2),dtype=tf.float32),
+                 'inter_inputs': tf.random.uniform(shape=(num_samples,136,1),dtype=tf.float32) ,
+                 'pressure_hl': tf.random.uniform(shape=(num_samples,138,1),dtype=tf.float32),
+                   }
 
-        dataset = dataset.batch(self.args.batch_size, drop_remainder=True)
+
+        targets = {'sw':tf.random.uniform(shape=(num_samples,138,2),dtype=tf.float32),
+                  'hr_sw':tf.random.uniform(shape=(num_samples,137,1),dtype=tf.float32),
+                  }
+
+        # Convert dictionary to TensorFlow dataset
+        dataset = tf.data.Dataset.from_tensor_slices((preds,targets))
+
+        # Batch the dataset
+        dataset = dataset.batch(self.args.batch_size,drop_remainder=True)
+
+        # Optionally, you can shuffle the dataset
+        dataset = dataset.shuffle(buffer_size=num_samples)
         return dataset
     
     @property
@@ -284,6 +252,8 @@ class AP3(Application):
             ),
         ]
         if self.with_horovod:
+            import horovod.tensorflow as hvd
+            import horovod.keras.callbacks as hvd_callbacks
             callbacks.append(hvd_callbacks.BroadcastGlobalVariablesCallback(0))
             callbacks.append(hvd_callbacks.MetricAverageCallback())
 
