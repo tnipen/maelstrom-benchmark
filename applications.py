@@ -230,6 +230,8 @@ class AP3(Application):
     def get_optimizer(self):
         lr = 0.5 * 10 ** (-3)
         if self.with_horovod:
+            import horovod.tensorflow as hvd
+            import horovod.keras.callbacks as hvd_callbacks
             if hvd.size() == 4: #! TODO CHECK IF THIS PROBLEMATIC
                 lr = lr / 2
 

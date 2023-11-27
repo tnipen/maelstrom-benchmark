@@ -1,5 +1,5 @@
 name:    benchmark
-outpath: results
+outpath: results_ap3_new_dataset
 comment: MAELSTROM GPU/CPU/IPU benchmark jube script
 # Tags:
 # - ipu (IPUS on dc-ipu). Must be scheduled from JURECA.
@@ -70,11 +70,11 @@ parameterset:
         # _: 80, 160, 320, 640
       - name: batch_size
         type: int
-        _: 512
+        _: 640
       - name: replica
         tag: ipu
         type: int
-        _: 1 #, 2, 4
+        _: 1
       - name: replica
         tag: "!ipu"
         type: int
@@ -90,15 +90,15 @@ parameterset:
       - name: dataset_size
         tag: "!intel+!amd+!jwc"
         type: int
-        _: 4294967296 
+        _:   268435456
       - name: dataset_size
         tag: "jwc"
         type: int
-        _: 17179869184
+        _:   4294967296
       - name: dataset_size
         tag: "jrc"
         type: int
-        _: 4294967296
+        _: 1073741824
       - name: dataset_size
         # Use a smaller dataset for CPU benchmarks, otherwise it takes forever
         tag: intel|amd
@@ -167,7 +167,7 @@ parameterset:
         _: 1
       - name: n_procs
         tag: "!ipu"
-        _: 4
+        _: 1,4
       - name: n_procs
         tag: ipu
         _: 1
@@ -180,9 +180,9 @@ parameterset:
         type: int
         _:  $n_cpu // $n_procs
       - name: timelimit
-        _: "00:20:00"
+        _: "00:60:00"
       - name: account
-        tag: jwb|jwc|amd|intel|jrc
+        tag: jwb|jwc|amd|intel
         _: deepacf
       - name: account
         tag: jrc
@@ -198,7 +198,7 @@ parameterset:
         _: booster
       - name: queue
         tag: jwc
-        _: gpus
+        _: dc-gpu
       - name: queue
         tag: intel
         _: batch

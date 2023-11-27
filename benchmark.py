@@ -28,6 +28,7 @@ def main():
     # AP1 specific arguments
     parser.add_argument('-p', default=128, type=int, help='Patch size', dest="patch_size")
     args = parser.parse_args()
+    
 
     # strategy 1
     #   batch size (samples/batch)
@@ -54,11 +55,11 @@ def main():
         ipu_config = ipu.config.IPUConfig()
         ipu_config.device_connection.type = (
                     ipu.config.DeviceConnectionType.ON_DEMAND
-                    )  # Optional - allows parallel execution
+                    )# Optional - allows parallel execution
+        
         ipu_config.auto_select_ipus = args.replica
         ipu_config.configure_ipu_system()
-        # ipu_config.io_tiles.num_io_tiles = 128
-        # ipu_config.io_tiles.place_ops_on_io_tiles = True
+
 
         strategy = ipu.ipu_strategy.IPUStrategy()
     else:
@@ -84,9 +85,10 @@ def main():
     # Settings
     batch_size_mb = app.get_batch_size_mb()
 
-    steps_per_epoch = int(args.dataset_size / 4 / app.batch_bytes / args.batch_size / num_processes)
-    # Adjust steps so that it is a multiple of steps_per_execution * replicas
 
+    steps_per_epoch = int(args.dataset_size / 4 / app.batch_bytes / args.batch_size / num_processes)
+    
+    # Adjust steps_per_execution so that it is a multiple of steps_per_execution * replicas
     if args.steps_per_execution is None:
         steps_per_epoch = (steps_per_epoch // (args.replica)) * args.replica
         steps_per_execution = steps_per_epoch
