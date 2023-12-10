@@ -10,6 +10,8 @@ def get(name, patch_size):
     """Returns an initialized application"""
     if name == "ap1":
         return AP1(patch_size=patch_size)
+    elif name == "ap5":
+        return AP5(patch_size=patch_size)
     else:
         raise NotImplementedError(f"Unknown application {name}")
 
@@ -108,3 +110,88 @@ class AP1(Application):
     
     def get_loss_function(self):
         return losses.quantile_score
+
+
+class AP5(Application):
+    """
+    Application 5: WGAN for statistical downscaling of ERA5 data to COSMO-REA6
+    """
+    def __init__(self, args, num_processes, with_horovod):
+        super().__init__(args = args, num_processes=num_processes, with_horovod=with_horovod)
+
+
+    def get_model(self):
+        sha_unet = models.sha_unet(self.input_shape, self.hparams["generator"], self.varnames_tar)
+        critic = models.critic(self.input_shape, self.hparams["critic"])
+
+        return models.wgan(sha_unet, critic, self.hparams)
+    
+    @property
+    def input_shape(self):
+        shape = [None, self.patch_size, self.patch_size, self.num_predictors]
+        return shape
+
+    @property
+    def target_shape(self):
+        shape = [None, self.patch_size, self.patch_size, self.ntargets]
+        return shape
+    
+    def get_optimizer(self, with_horovod=False):
+        """
+        Returns the optimizers in a dictionary for the WGAN of AP5.
+        """
+        learning_rate = 1.0e-5  # Doesn't matter for this benchmark
+        optimizers = {}
+        optimizers["c_optimizer"] = keras.optimizers.Adam(learning_rate)
+        optimizers["g_optimizer"] = keras.optimizers.Adam(learning_rate)
+        if with_horovod:
+            for optimizer_model, optimizer in optimizers.items():
+                optimizers[optimizer_model] = hvd.DistributedOptimizer(optimizer, backward_passes_per_step=1,
+                                                                       average_aggregated_gradients=True)
+        return optimizers
+
+    def get_loss_function(self):
+        """
+        Returns the loss functions in a dictionary for the WGAN of AP5.
+        """
+        loss_dict = {}
+        loss_dict["recon_loss"] = self.recon_loss
+        loss_dict["critic_loss"] = self.critic_loss
+        loss_dict["critic_gen_loss"] = self.critic_gen_loss
+
+        return loss_dict
+
+
+    def recon_loss(self, real_data, gen_data):
+        """
+        Reconstruction loss in WGAN (L1 loss).
+        :param real_data: real data
+        :param gen_data: generated data
+        :return rloss: reconstruction loss
+        """
+        rloss = 0.
+        for i in range(self.n_targets):
+            rloss += tf.reduce_mean(tf.abs(tf.squeeze(gen_data[..., i]) - real_data[..., i]))
+        return rloss
+
+    @staticmethod
+    def critic_loss(critic_real, critic_gen):
+        """
+        The critic is optimized to maximize the difference between the generated and the real data max(real - gen).
+        This is equivalent to minimizing the negative of this difference, i.e. min(gen - real) = max(real - gen)
+        :param critic_real: critic on the real data
+        :param critic_gen: critic on the generated data
+        :return c_loss: loss to optimize the critic
+        """
+        c_loss = tf.reduce_mean(critic_gen - critic_real)
+        return c_loss
+
+    @staticmethod
+    def critic_gen_loss(critic_gen):
+        """
+        The generator is optimized to minimize the critic on the generated data.
+        :param critic_gen: critic on the generated data
+        :return cg_loss: loss to optimize the generator
+        """
+        cg_loss = -tf.reduce_mean(critic_gen)
+        return cg_loss
