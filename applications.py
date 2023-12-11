@@ -116,24 +116,41 @@ class AP5(Application):
     """
     Application 5: WGAN for statistical downscaling of ERA5 data to COSMO-REA6
     """
-    def __init__(self, args, num_processes, with_horovod):
-        super().__init__(args = args, num_processes=num_processes, with_horovod=with_horovod)
+    def __init__(self, patch_size: tuple = (120, 96), num_predictors: int = 15, ntargets: int = 1, 
+                 hparams: dict = {"batch_size": None, "generator": {"l_avgpool": False, "activation": "swish"}}):
+        """
+        :param patch_size: size of the input patch
+        :param num_predictors: number of predictors
+        :param ntargets: number of 'dynamic' targets (excl. z)
+        :param hparams: hyperparameters
+        """
+        self.patch_size = patch_size
+        self.num_predictors = num_predictors
+        self.hparams = hparams
+        self.n_targets = ntargets +1 if self.hparams["generator"].get("z_branch", False) else ntargets    # +1 for z
+
+        # to be set in get_dataset
+        self.batch_size = None
 
 
     def get_model(self):
-        sha_unet = models.sha_unet(self.input_shape, self.hparams["generator"], self.varnames_tar)
-        critic = models.critic(self.input_shape, self.hparams["critic"])
+        assert self.batch_size is not None, "batch_size must be set before calling get_model, i.e. run get_dataset first."
+
+        self.hparams["batch_size"] = self.batch_size
+
+        sha_unet = models.sha_unet(self.input_shape, self.hparams["generator"], self.n_targets, concat_out=True)
+        critic = models.critic((*self.input_shape[:-1], 1), self.hparams["critic"])
 
         return models.wgan(sha_unet, critic, self.hparams)
     
     @property
     def input_shape(self):
-        shape = [None, self.patch_size, self.patch_size, self.num_predictors]
+        shape = [None, *self.patch_size, self.num_predictors]
         return shape
 
     @property
     def target_shape(self):
-        shape = [None, self.patch_size, self.patch_size, self.ntargets]
+        shape = [None, *self.patch_size, self.ntargets]
         return shape
     
     def get_optimizer(self, with_horovod=False):
@@ -160,7 +177,36 @@ class AP5(Application):
         loss_dict["critic_gen_loss"] = self.critic_gen_loss
 
         return loss_dict
+    
+    def get_dataset(self, num_batches, batch_size):
+        """ Creates a tf dataset with specified sizes
+        Args:
+            num_batches (int): Number of batches in the dataset
+            batch_size (int): Number of samples in one batch
 
+        Returns:
+            tf.data.Dataset
+        """
+        def get_generator(input_shape, target_shape, num_samples):
+            # device = "CPU:0"
+            # with tf.device(device):
+            def gen():
+                    for i in range(num_samples):
+                        pred = tf.random.uniform(input_shape, dtype=tf.float32)
+                        target = tf.random.uniform(target_shape, dtype=tf.float32)
+                        yield pred, target
+            return gen
+        
+        # effective batch-size during training of WGAN (with d_steps)
+        self.batch_size = batch_size.copy()
+        batch_size_eff = batch_size * self.hparams["d_steps"]
+
+        output_signature = (tf.TensorSpec(shape=self.input_shape, dtype=tf.float32), tf.TensorSpec(shape=self.target_shape, dtype=tf.float32))
+        dataset = tf.data.Dataset.from_generator(get_generator(self.input_shape, self.target_shape, int(num_batches * batch_size_eff)), output_signature=output_signature)
+
+        # drop_remainder needed for IPU:
+        dataset = dataset.batch(batch_size_eff, drop_remainder=True)
+        return dataset
 
     def recon_loss(self, real_data, gen_data):
         """
