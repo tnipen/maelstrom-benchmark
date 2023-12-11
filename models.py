@@ -274,12 +274,12 @@ def decoder_block(inputs, skip_features, num_filters, strides_up: int = 2, l_sub
 
 
 # The U-net model architecture
-def sha_unet(input_shape: tuple, hparams_unet: dict, varnames_tar: List[str], concat_out: bool = False) -> keras.Model:
+def sha_unet(input_shape: tuple, hparams_unet: dict, ntargets: int, concat_out: bool = False) -> keras.Model:
     """
     Builds up U-net model architecture adapted from Sha et al., 2020 (see https://doi.org/10.1175/JAMC-D-20-0057.1).
     :param input_shape: shape of input-data
     :param channels_start: number of channels to use as start in encoder blocks
-    :param n_predictands: number of target variables (dynamic output variables)
+    :param ntargets: number of target variables (dynamic output variables)
     :param z_branch: flag if z-branch is used.
     :param advanced_unet: flag if advanced U-net is used (LeakyReLU instead of ReLU, average pooling instead of max pooling and subpixel-layer)
     :param concat_out: boolean if output layers will be concatenated (disables named target channels!)
@@ -287,7 +287,7 @@ def sha_unet(input_shape: tuple, hparams_unet: dict, varnames_tar: List[str], co
     :return:
     """
     # basic configuration of U-Net 
-    n_predictands_dyn = len(varnames_tar) - 1 if hparams_unet["z_branch"] else len(varnames_tar)
+    ntargets_dyn = ntargets - 1 if hparams_unet["z_branch"] else ntargets
 
     channels_start = hparams_unet.get("ngf", 56)
     z_branch = hparams_unet.get("z_branch", False)
@@ -315,10 +315,10 @@ def sha_unet(input_shape: tuple, hparams_unet: dict, varnames_tar: List[str], co
     d2 = decoder_block(d1, s2, channels_start * 2, l_subpixel=l_subpixel, **config_conv)
     d3 = decoder_block(d2, s1, channels_start, l_subpixel=l_subpixel, **config_conv)
 
-    output_dyn = keras.layers.Conv2D(n_predictands_dyn, (1, 1), kernel_initializer=config_conv["kernel_init"], name=f"{varnames_tar[0]}_out")(d3)
+    output_dyn = keras.layers.Conv2D(ntargets_dyn, (1, 1), kernel_initializer=config_conv["kernel_init"], name=f"dyn_out")(d3)
     if z_branch:
         print("Use z_branch...")
-        output_static = keras.layers.Conv2D(1, (1, 1), kernel_initializer=config_conv["kernel_init"], name=f"{varnames_tar[1]}_out")(d3)
+        output_static = keras.layers.Conv2D(1, (1, 1), kernel_initializer=config_conv["kernel_init"], name=f"z_out")(d3)
 
         if concat_out:
             model = keras.Model(inputs, tf.concat([output_dyn, output_static], axis=-1), name="downscaling_unet_with_z")
@@ -385,19 +385,26 @@ class WGAN(keras.Model):
         self.d_steps = hparams_dict.get("d_steps", 5)
         self.gp_weight = hparams_dict.get("gp_weight", 10.)
         self.recon_weight = hparams_dict.get("recon_weight", 1000.)
+        self.trainable_weights = self.generator.trainable_weights + self.critic.trainable_weights
 
-    def compile(self, optimizer_dict, loss_dict):
+    def compile(self, optimizer_dict, loss_dict, **kwargs):
         """
         Set the optimizer as well as the adversarial loss functions for the generator and critic.
         Furthermore, the model gets compiled.
         """
-        super().compile()
         self.c_optimizer = optimizer_dict["c_optimizer"]
         self.g_optimizer = optimizer_dict["g_optimizer"]
 
         self.critic_loss = loss_dict["critic_loss"]
         self.critic_gen_loss = loss_dict["critic_gen_loss"]
         self.recon_loss = loss_dict["recon_loss"]
+
+        compile_opts = kwargs.copy()
+        # drop loss dict and optimizer dict from compile_opts...
+        compile_opts.pop("loss_dict", None)
+        compile_opts.pop("optimizer_dict", None)
+        # ... compile model
+        super().compile(**compile_opts) 
 
 
     def train_step(self, data_iter: tf.data.Dataset) -> OrderedDict:
