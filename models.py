@@ -295,9 +295,9 @@ def sha_unet(input_shape: tuple, hparams_unet: dict, ntargets: int, concat_out: 
     l_avgpool = hparams_unet.get("l_avgpool", True)
     l_subpixel = hparams_unet.get("l_subpixel", True)
 
-    config_conv = {"kernel": hparams_unet["kernel"], "strides": hparams_unet["strides"], "padding": hparams_unet["padding"], 
-                   "activation": hparams_unet["activation"], "activation_args": hparams_unet["activation_args"], 
-                   "kernel_init": hparams_unet["kernel_init"], "l_batch_normalization": hparams_unet["l_batch_normalization"]}
+    config_conv = {"kernel": hparams_unet.get("kernel", (3, 3)), "strides": hparams_unet.get("strides", (1, 1)), "padding": hparams_unet.get("padding", "same"), 
+                   "activation": hparams_unet.get("activation", "swish"), "activation_args": hparams_unet.get("activation_args", {}), 
+                   "kernel_init": hparams_unet.get("kernel_init", "he_normal"), "l_batch_normalization": hparams_unet.get("l_batch_normalization", True)}
 
     # build U-Net
     inputs = keras.layers.Input(input_shape)
