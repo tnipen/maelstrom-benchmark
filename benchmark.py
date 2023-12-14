@@ -8,7 +8,9 @@ os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 import tensorflow as tf
 import tensorflow.keras.backend as K
 from utils import check_horovod, set_gpu_memory_growth,NoStrategy, TimingCallback,print_cpu_usage,print_gpu_usage
+import energy_utils 
 import applications
+
 
 
 """This benchmark scripts checks training performance on GPU, CPU, and IPU"""
@@ -38,145 +40,179 @@ def main():
     #   patch size
     #   dataset size
     #   batch size
-
-    main_process = True
-    num_processes = 1
-    with_horovod = check_horovod()    
-    if with_horovod:
-        import horovod.tensorflow as hvd
-    print(f"Running with horovod? {with_horovod}")
     
-    if args.hardware == "cpu":
-        os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
-        strategy = NoStrategy()
-        
-    elif args.hardware == "ipu":
-        from tensorflow.python import ipu
-        ipu_config = ipu.config.IPUConfig()
-        ipu_config.device_connection.type = (
-                    ipu.config.DeviceConnectionType.ON_DEMAND
-                    )# Optional - allows parallel execution
-        
-        ipu_config.auto_select_ipus = args.replica
-        ipu_config.configure_ipu_system()
-
-
-        strategy = ipu.ipu_strategy.IPUStrategy()
-    else:
-        gpus = tf.config.experimental.list_physical_devices("GPU")
-
-        set_gpu_memory_growth()
-        if with_horovod:
-            hvd.init()
-            print(hvd.rank(), hvd.size())
-            if len(gpus) == 0:
-                raise Exception("No GPUs available")
-            if len(gpus) > 1:
-            # if hvd.size() == len(gpus):
-                # Probably using horovodrun (not srun)
-                tf.config.experimental.set_visible_devices(gpus[hvd.local_rank()], "GPU")
-            main_process = hvd.rank() == 0
-            num_processes = hvd.size()
-        print("Num GPUs Available: ", len(gpus))
-        strategy = NoStrategy()
-
-    app = applications.get(args.app_name,args,num_processes,with_horovod)
-
-    # Settings
-    batch_size_mb = app.get_batch_size_mb()
-
-
-    steps_per_epoch = int(args.dataset_size / 4 / app.batch_bytes / args.batch_size / num_processes)
+    energy_profiler = energy_utils.get_energy_profiler(args.hardware)
     
-    # Adjust steps_per_execution so that it is a multiple of steps_per_execution * replicas
-    if args.steps_per_execution is None:
-        steps_per_epoch = (steps_per_epoch // (args.replica)) * args.replica
-        steps_per_execution = steps_per_epoch
-    else:
-        steps_per_execution = args.steps_per_execution
-        if steps_per_execution * args.replica > steps_per_epoch:
-            steps_per_execution = steps_per_epoch // args.replica
-        steps_per_epoch = (steps_per_epoch // (steps_per_execution * args.replica)) * steps_per_execution * args.replica
+    with energy_profiler() as measured_scope:
+        print('Measuring Energy during main() call')
+        try:
 
-    if main_process:
-        print("steps_per_epoch:", steps_per_epoch)
-        print("steps_per_execution:", steps_per_execution)
+            main_process = True
+            num_processes = 1
+            with_horovod = check_horovod()    
+            if with_horovod:
+                import horovod.tensorflow as hvd
+            print(f"Running with horovod? {with_horovod}")
 
-    num_batches=steps_per_epoch * args.epochs
-    dataset = app.get_dataset(num_batches)
-    dataset_size_mb = batch_size_mb * steps_per_epoch * num_processes
+            if args.hardware == "cpu":
+                os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
+                strategy = NoStrategy()
 
-    with strategy.scope():
-        
-        model = app.get_model()
-        optimizer = app.get_optimizer()
+            elif args.hardware == "ipu":
+                from tensorflow.python import ipu
+                ipu_config = ipu.config.IPUConfig()
+                ipu_config.device_connection.type = (
+                            ipu.config.DeviceConnectionType.ON_DEMAND
+                            )# Optional - allows parallel execution
+                ipu_config.auto_select_ipus = args.replica
+                ipu_config.configure_ipu_system()
 
-        if args.app_name != 'ap3':
-            loss = app.get_loss_function()
-        else:
-            loss,loss_weights = app.get_loss_function()
-        
-        if args.hardware == "ipu":
-            if args.app_name != 'ap3' :
-                model.compile(optimizer=optimizer, loss=loss, steps_per_execution=steps_per_execution)
+                strategy = ipu.ipu_strategy.IPUStrategy()        
+
             else:
-                model.compile(optimizer=optimizer, loss=loss, loss_weights=loss_weights,steps_per_execution=steps_per_execution)
-        else:
-            if args.app_name != 'ap3' :
-                model.compile(optimizer=optimizer, loss=loss)
+                gpus = tf.config.experimental.list_physical_devices("GPU")
+
+                set_gpu_memory_growth()
+                if with_horovod:
+                    hvd.init()
+                    print(hvd.rank(), hvd.size())
+                    if len(gpus) == 0:
+                        raise Exception("No GPUs available")
+                    if len(gpus) > 1:
+                    # if hvd.size() == len(gpus):
+                        # Probably using horovodrun (not srun)
+                        tf.config.experimental.set_visible_devices(gpus[hvd.local_rank()], "GPU")
+                    main_process = hvd.rank() == 0
+                    num_processes = hvd.size()
+                print("Num GPUs Available: ", len(gpus))
+                strategy = NoStrategy()
+
+            app = applications.get(args.app_name,args,num_processes,with_horovod)
+
+            # Settings
+            batch_size_mb = app.get_batch_size_mb()
+
+
+            steps_per_epoch = int(args.dataset_size / 4 / app.batch_bytes / args.batch_size / num_processes)
+
+            # Adjust steps_per_execution so that it is a multiple of steps_per_execution * replicas
+            if args.steps_per_execution is None:
+                steps_per_epoch = (steps_per_epoch // (args.replica)) * args.replica
+                steps_per_execution = steps_per_epoch
             else:
-                model.compile(optimizer=optimizer, loss=loss,loss_weights=loss_weights) 
+                steps_per_execution = args.steps_per_execution
+                if steps_per_execution * args.replica > steps_per_epoch:
+                    steps_per_execution = steps_per_epoch // args.replica
+                steps_per_epoch = (steps_per_epoch // (steps_per_execution * args.replica)) * steps_per_execution * args.replica
 
-        # Print out dataset
-        # for k,v in dataset:
-        #     print(k.shape, v.shape)
-        
-        callbacks = list()
-        callbacks = app.get_callbacks(callbacks)
-        if main_process:
-            timing_callback = TimingCallback()
-            callbacks += [timing_callback]
-    
+            if main_process:
+                print("steps_per_epoch:", steps_per_epoch)
+                print("steps_per_execution:", steps_per_execution)
 
-        # Train the model
-        start_time = time.time()
-        history = model.fit(dataset, epochs=args.epochs, steps_per_epoch=steps_per_epoch, callbacks=callbacks, verbose=main_process)
-        training_time = time.time() - start_time
+            num_batches=steps_per_epoch * args.epochs
+            dataset = app.get_dataset(num_batches)
+            dataset_size_mb = batch_size_mb * steps_per_epoch * num_processes
 
-    # Write out results
-    if main_process:
-        times = timing_callback.get_epoch_times()
-        num_trainable_weights = int(np.sum([K.count_params(w) for w in model.trainable_weights]))
-        hostname = socket.gethostname().split('.')[0]
-        print("Benchmark stats:")
-        print(f"   Application: ", args.app_name)
-        print(f"   Hardware: ", args.hardware.upper())
-        print(f"   Hostname: {hostname}")
-        print(f"   Pred sample shape: {app.input_shape}")
-        print(f"   Target sample shape: {app.target_shape}")
-        print(f"   Num epochs: ", args.epochs)
-        print(f"   Samples per batch: ", args.batch_size)
-        print(f"   Dataset size: {dataset_size_mb:.2f} MB")
-        print(f"   Steps per execution: {steps_per_execution}")
-        print(f"   Num replicas: {args.replica}")
-        print(f"   Batches per epoch: {steps_per_epoch}")
-        print(f"   Batch size: {batch_size_mb:.2f} MB")
-        print(f"   Num trainable weights: {num_trainable_weights}")
-        print(f"   Num processes: {num_processes}")
-        print("Training performance:")
-        print(f"   Total training time: {training_time:.2f} s")
-        print(f"   Average performance: {dataset_size_mb / training_time * args.epochs:.2f} MB/s")
-        print(f"   First epoch time: {times[0]:.2f} s")
-        print(f"   Non-first epoch time: {np.mean(times[1:]):.2f} s")
-        print(f"   Performance non-first epoch: {dataset_size_mb / np.mean(times[1:]):.2f} MB/s")
-        print(f"   Min epoch time: {np.min(times):.2f} s")
-        print(f"   Performance min epoch: {dataset_size_mb / np.min(times):.2f} MB/s")
-        print(f"   Mean epoch time: {np.mean(times):.2f} s")
-        print(f"   Performance mean epoch: {dataset_size_mb / np.mean(times):.2f} MB/s")
-        print(f"   Max epoch time: {np.max(times):.2f} s")
-        print(f"   Performance max epoch: {dataset_size_mb / np.max(times):.2f} MB/s")
-        print_gpu_usage("   GPU memory: ")
-        print_cpu_usage("   CPU memory: ")
+            with strategy.scope():
+
+                model = app.get_model()
+                optimizer = app.get_optimizer()
+
+                if args.app_name != 'ap3':
+                    loss = app.get_loss_function()
+                else:
+                    loss,loss_weights = app.get_loss_function()
+
+                if args.hardware == "ipu":
+                    if args.app_name != 'ap3' :
+                        model.compile(optimizer=optimizer, loss=loss, steps_per_execution=steps_per_execution)
+                    else:
+                        model.compile(optimizer=optimizer, loss=loss, loss_weights=loss_weights,steps_per_execution=steps_per_execution)
+                else:
+                    if args.app_name != 'ap3' :
+                        model.compile(optimizer=optimizer, loss=loss)
+                    else:
+                        model.compile(optimizer=optimizer, loss=loss,loss_weights=loss_weights) 
+
+                # Print out dataset
+                # for k,v in dataset:
+                #     print(k.shape, v.shape)
+
+                callbacks = list()
+                callbacks = app.get_callbacks(callbacks)
+                if main_process:
+                    timing_callback = TimingCallback()
+                    callbacks += [timing_callback]
+
+
+                # Train the model
+                start_time = time.time()
+                history = model.fit(dataset, epochs=args.epochs, steps_per_epoch=steps_per_epoch, callbacks=callbacks, verbose=1)
+                training_time = time.time() - start_time
+
+
+            # Write out results
+            if main_process:
+                times = timing_callback.get_epoch_times()
+                num_trainable_weights = int(np.sum([K.count_params(w) for w in model.trainable_weights]))
+                hostname = socket.gethostname().split('.')[0]
+                print("Benchmark stats:")
+                print(f"   Application: ", args.app_name)
+                print(f"   Hardware: ", args.hardware.upper())
+                print(f"   Hostname: {hostname}")
+                print(f"   Pred sample shape: {app.input_shape}")
+                print(f"   Target sample shape: {app.target_shape}")
+                print(f"   Num epochs: ", args.epochs)
+                print(f"   Samples per batch: ", args.batch_size)
+                print(f"   Dataset size: {dataset_size_mb:.2f} MB")
+                print(f"   Steps per execution: {steps_per_execution}")
+                print(f"   Num replicas: {args.replica}")
+                print(f"   Batches per epoch: {steps_per_epoch}")
+                print(f"   Batch size: {batch_size_mb:.2f} MB")
+                print(f"   Num trainable weights: {num_trainable_weights}")
+                print(f"   Num processes: {num_processes}")
+                print("Training performance:")
+                print(f"   Total training time: {training_time:.2f} s")
+                print(f"   Average performance: {dataset_size_mb / training_time * args.epochs:.2f} MB/s")
+                print(f"   First epoch time: {times[0]:.2f} s")
+                print(f"   Non-first epoch time: {np.mean(times[1:]):.2f} s")
+                print(f"   Performance non-first epoch: {dataset_size_mb / np.mean(times[1:]):.2f} MB/s")
+                print(f"   Min epoch time: {np.min(times):.2f} s")
+                print(f"   Performance min epoch: {dataset_size_mb / np.min(times):.2f} MB/s")
+                print(f"   Mean epoch time: {np.mean(times):.2f} s")
+                print(f"   Performance mean epoch: {dataset_size_mb / np.mean(times):.2f} MB/s")
+                print(f"   Max epoch time: {np.max(times):.2f} s")
+                print(f"   Performance max epoch: {dataset_size_mb / np.max(times):.2f} MB/s")
+                print_gpu_usage("   GPU memory: ")
+                print_cpu_usage("   CPU memory: ")
+
+                
+        except Exception as exc:
+            import traceback
+            print(f"Errors occured during training: {exc}")
+            print(f"Traceback: {traceback.format_exc()}")
+                
+
+    f = open(f"EnergyFile-NVDA-integrated.txt", 'a')
+    print("Energy data:")
+    print (measured_scope.df)
+    measured_scope.df.to_csv("EnergyFile-NVDA.csv") 
+    print("Energy-per-GPU-list:")
+    if args.hardware=='gpu':
+        energy_int = measured_scope.energy() 
+        print(f"integrated: {energy_int}") 
+        f.write(f"integrated: {energy_int}") 
+        f.close()
+    elif args.hardware=='ipu':
+        pass
+    elif args.hardware=='arm':
+        energy_int,energy_cnt = measured_scope.energy()
+        print(f"integrated: {energy_int}")
+        print(f"from counter: {energy_cnt}") 
+        f.write(f"integrated: {energy_int}") 
+        f.write(f"from counter: {energy_cnt}")
+        f.close()
 
 if __name__ == "__main__":
+    
     main()

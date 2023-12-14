@@ -214,10 +214,15 @@ class AP3(Application):
 
     def get_model(self):
         dl_test=False
+        nneur=64
+        lstm=True
+
         return models.build_rnn(
                 self.input_shape,
                 self.target_shape,
-                dl_test=dl_test
+                nneur=nneur,
+                dl_test=dl_test,
+                lstm=lstm
             )
 
     def get_loss_function(self):

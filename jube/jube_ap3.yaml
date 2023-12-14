@@ -1,5 +1,5 @@
 name:    benchmark
-outpath: results_ap3_new_dataset
+outpath: results_ap3
 comment: MAELSTROM GPU/CPU/IPU benchmark jube script
 # Tags:
 # - ipu (IPUS on dc-ipu). Must be scheduled from JURECA.
@@ -29,6 +29,10 @@ parameterset:
         _: A100_GPU
       - name: hardware_name
         type: string
+        tag: h100
+        _: H100_GPU
+      - name: hardware_name
+        type: string
         tag: jwc
         _: V100_GPU
       - name: hardware_name
@@ -45,7 +49,7 @@ parameterset:
         _: AMD_EPYC_2.8GHz
       - name: hardware
         type: string
-        tag: jwb|jwc|jrc
+        tag: jwb|jwc|jrc|h100
         _: gpu
       - name: hardware
         type: string
@@ -70,7 +74,7 @@ parameterset:
         # _: 80, 160, 320, 640
       - name: batch_size
         type: int
-        _: 640
+        _: 56
       - name: replica
         tag: ipu
         type: int
@@ -82,7 +86,7 @@ parameterset:
       - name: steps_per_execution
         tag: ipu
         type: int
-        _: 1 #, 2, 4
+        _: 4000
       - name: steps_per_execution
         tag: "!ipu"
         type: int
@@ -90,7 +94,8 @@ parameterset:
       - name: dataset_size
         tag: "!intel+!amd+!jwc"
         type: int
-        _:   268435456
+        _:   4294967296
+        #_ : 2147483648
       - name: dataset_size
         tag: "jwc"
         type: int
@@ -98,12 +103,16 @@ parameterset:
       - name: dataset_size
         tag: "jrc"
         type: int
-        _: 1073741824
+        _: 4294967296
+      - name: dataset_size
+        tag: "h100"
+        type: int
+        _: 2147483648
       - name: dataset_size
         # Use a smaller dataset for CPU benchmarks, otherwise it takes forever
         tag: intel|amd
         type: int
-        _: 1073741824
+        _: 4294967296
       - name: app
         type: string
         _: ap3
@@ -112,6 +121,19 @@ parameterset:
         _: "-a ${app} -b ${batch_size} -e ${nepochs} -d ${dataset_size} -w ${hardware} -s ${steps_per_execution} -r ${replica}"
   - name: globalParameter
     parameter:
+      - name: create_env
+        # ipu doesn't need any env activated, because it runs in the container
+        tag: "jwb|jwc|amd|intel|jrc"
+        separator: |
+        _: 
+          cd $jube_benchmark_home/../env_setup/;
+          source ./create_env.sh venv_$systemname;
+      - name: activate_env
+        # ipu doesn't need any env activated, because it runs in the container
+        tag: "jwb|jwc|amd|intel|jrc"
+        separator: |
+        _: 
+          source $jube_benchmark_home/../virtual_envs/venv_$systemname/bin/activate;
       - name: modules
         # ipu doesn't need any modules loaded, because it runs in the container
         tag: "jwb|jwc|amd|intel|jrc"
@@ -123,12 +145,15 @@ parameterset:
           module load GCC/11.2.0 &&
           module load OpenMPI/4.1.2 &&
           module load mpi4py/3.1.3 &&
-          module load Horovod/0.24.3
+          module load Horovod/0.24.3      
       - name: systemname
         tag: jwc
         _: jwc
       - name: systemname
         tag: jrc
+        _: jrc
+      - name: systemname
+        tag: h100
         _: jrc
       - name: systemname
         tag: jwb
@@ -149,16 +174,16 @@ parameterset:
     parameter:
       - name: preprocess
         mode: text
-        tag: "jwb|jwc|amd|intel|jrc"
+        tag: "jwb|jwc|amd|intel|jrc|h100"
         _:
           $modules;
-          # source $jube_benchmark_home/.venv_${systemname}/bin/activate;
 
       - {name: n_cpu, _: 48, tag: jwb}
       - {name: n_cpu, _: 48, tag: amd}
       - {name: n_cpu, _: 48, tag: intel}
       - {name: n_cpu, _: 40, tag: jwc}
       - {name: n_cpu, _: 48, tag: jrc}
+      - {name: n_cpu, _: 48, tag: h100}
       - {name: n_cpu, _: 48, tag: ipu}
       - name: SRUN_CPUS_PER_TASK
         export: true
@@ -167,7 +192,7 @@ parameterset:
         _: 1
       - name: n_procs
         tag: "!ipu"
-        _: 1,4
+        _: 1
       - name: n_procs
         tag: ipu
         _: 1
@@ -186,7 +211,10 @@ parameterset:
         _: deepacf
       - name: account
         tag: jrc
-        _: training2330
+        _: exalab
+      - name: account
+        tag: h100
+        _: exalab        
       - name: account
         tag: ipu
         _: exalab
@@ -198,7 +226,7 @@ parameterset:
         _: booster
       - name: queue
         tag: jwc
-        _: dc-gpu
+        _: dc-gpu-devel
       - name: queue
         tag: intel
         _: batch
@@ -207,9 +235,12 @@ parameterset:
         _: dc-ipu
       - name: queue
         tag: jrc
-        _: dc-gpu
+        _: dc-gpu-devel
+      - name: queue
+        tag: h100
+        _: dc-h100        
       - name: gres
-        tag: jwb|jwc|jrc
+        tag: jwb|jwc|jrc|h100
         _: gpu:$n_gpu
       - name: executable
         _: ${program}
@@ -290,15 +321,14 @@ result:
 
 step:
   - name: setup_venv
-    active: false
+    active: true
     use:
       - globalParameter
       - systemParameter
     do:
       _:
         $modules;
-        cd $jube_benchmark_home/../setup_env/ &&
-        source ./setup_${systemname}.sh
+        $create_env;
 
   # Traning experiments
   - name: train
@@ -317,4 +347,9 @@ step:
       error_file: $error_file
       _: 
         $modules;
+        $activate_env
         $submit $submit_script
+        
+ 
+
+
