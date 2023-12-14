@@ -117,7 +117,7 @@ class AP5(Application):
     Application 5: WGAN for statistical downscaling of ERA5 data to COSMO-REA6
     """
     def __init__(self, patch_size: tuple = (120, 96), num_predictors: int = 15, ntargets: int = 1, 
-                 hparams: dict = {"batch_size": None, "generator": {"l_avgpool": False, "activation": "swish"}}):
+            hparams: dict = {"batch_size": None, "generator": {"l_avgpool": False, "activation": "swish", "z_branch": True}}):
         """
         :param patch_size: size of the input patch
         :param num_predictors: number of predictors
@@ -127,7 +127,7 @@ class AP5(Application):
         self.patch_size = patch_size
         self.num_predictors = num_predictors
         self.hparams = hparams
-        self.n_targets = ntargets +1 if self.hparams["generator"].get("z_branch", False) else ntargets    # +1 for z
+        self.ntargets = ntargets +1 if self.hparams["generator"].get("z_branch", False) else ntargets    # +1 for z
 
         # to be set in get_dataset
         self.batch_size = None
@@ -138,19 +138,19 @@ class AP5(Application):
 
         self.hparams["batch_size"] = self.batch_size
 
-        sha_unet = models.sha_unet(self.input_shape, self.hparams["generator"], self.n_targets, concat_out=True)
+        sha_unet = models.sha_unet(self.input_shape, self.hparams["generator"], self.ntargets, concat_out=True)
         critic = models.critic((*self.input_shape[:-1], 1), self.hparams["critic"])
 
         return models.wgan(sha_unet, critic, self.hparams)
     
     @property
     def input_shape(self):
-        shape = [None, *self.patch_size, self.num_predictors]
+        shape = [*self.patch_size, self.num_predictors]
         return shape
 
     @property
     def target_shape(self):
-        shape = [None, *self.patch_size, self.ntargets]
+        shape = [*self.patch_size, self.ntargets]
         return shape
     
     def get_optimizer(self, with_horovod=False):
@@ -198,8 +198,8 @@ class AP5(Application):
             return gen
         
         # effective batch-size during training of WGAN (with d_steps)
-        self.batch_size = batch_size.copy()
-        batch_size_eff = batch_size * self.hparams["d_steps"]
+        self.batch_size = batch_size
+        batch_size_eff = batch_size * self.hparams.get("d_steps", 5)
 
         output_signature = (tf.TensorSpec(shape=self.input_shape, dtype=tf.float32), tf.TensorSpec(shape=self.target_shape, dtype=tf.float32))
         dataset = tf.data.Dataset.from_generator(get_generator(self.input_shape, self.target_shape, int(num_batches * batch_size_eff)), output_signature=output_signature)
@@ -216,7 +216,7 @@ class AP5(Application):
         :return rloss: reconstruction loss
         """
         rloss = 0.
-        for i in range(self.n_targets):
+        for i in range(self.ntargets):
             rloss += tf.reduce_mean(tf.abs(tf.squeeze(gen_data[..., i]) - real_data[..., i]))
         return rloss
 
