@@ -201,19 +201,24 @@ def main():
                 
 
     f = open(f"EnergyFile-NVDA-integrated.txt", 'a')
-    print("Energy data:")
-    print (measured_scope.df)
+    #print("Energy data:")
     measured_scope.df.to_csv("EnergyFile-NVDA.csv") 
     print("Energy-per-GPU-list:")
     if args.hardware in ['gpu','ipu']:
         energy_int = measured_scope.energy() 
-        print(f"integrated: {energy_int}") 
+        n_devices = len(energy_int)
+        for n in range(n_devices):
+            print(f"   Integrated Energy for Device {n}: {energy_int[n]:.2f} W")
+                
         f.write(f"integrated: {energy_int}") 
         f.close()
     elif args.hardware=='arm':
         energy_int,energy_cnt = measured_scope.energy()
-        print(f"integrated: {energy_int}")
-        print(f"from counter: {energy_cnt}") 
+        n_devices = len(energy_int)
+        for n in range(n_devices):
+            print(f"   Integrated Energy for Device {n}: {energy_int[n]:.2f} W")
+            print(f"   Counter Energy for Device {n}: {energy_cnt[n]:.2f} W")
+
         f.write(f"integrated: {energy_int}") 
         f.write(f"from counter: {energy_cnt}")
         f.close()
