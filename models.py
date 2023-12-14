@@ -354,6 +354,7 @@ def build_rnn(
         init_state = [mlp_surface_outp,mlp_surface_outp2]
     else:
         init_state = mlp_surface_outp
+        
     hidden1 = rnnlayer(nneur,return_sequences=True,
                        go_backwards=True)(hidden0_lev, initial_state=init_state)
 

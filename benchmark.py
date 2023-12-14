@@ -10,7 +10,7 @@ import tensorflow.keras.backend as K
 from utils import check_horovod, set_gpu_memory_growth,NoStrategy, TimingCallback,print_cpu_usage,print_gpu_usage
 import energy_utils 
 import applications
-
+import sys
 
 
 """This benchmark scripts checks training performance on GPU, CPU, and IPU"""
@@ -31,7 +31,6 @@ def main():
     parser.add_argument('-p', default=128, type=int, help='Patch size', dest="patch_size")
     args = parser.parse_args()
     
-
     # strategy 1
     #   batch size (samples/batch)
     #   batches/epoch
@@ -59,6 +58,14 @@ def main():
                 strategy = NoStrategy()
 
             elif args.hardware == "ipu":
+                import gcipuinfo
+                ipu_info = gcipuinfo.gcipuinfo()
+                num_devices = len(ipu_info.getDevices())
+                print('devices detected', num_devices)
+                if num_devices == 0:
+                    print("gc_power_consumption.py: error: no IPUs detected", file=sys.stderr)
+                    exit(-1)
+                
                 from tensorflow.python import ipu
                 ipu_config = ipu.config.IPUConfig()
                 ipu_config.device_connection.type = (
@@ -198,13 +205,11 @@ def main():
     print (measured_scope.df)
     measured_scope.df.to_csv("EnergyFile-NVDA.csv") 
     print("Energy-per-GPU-list:")
-    if args.hardware=='gpu':
+    if args.hardware in ['gpu','ipu']:
         energy_int = measured_scope.energy() 
         print(f"integrated: {energy_int}") 
         f.write(f"integrated: {energy_int}") 
         f.close()
-    elif args.hardware=='ipu':
-        pass
     elif args.hardware=='arm':
         energy_int,energy_cnt = measured_scope.energy()
         print(f"integrated: {energy_int}")
@@ -214,5 +219,7 @@ def main():
         f.close()
 
 if __name__ == "__main__":
+    
+
     
     main()
