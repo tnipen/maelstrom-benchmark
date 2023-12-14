@@ -29,10 +29,6 @@ parameterset:
         _: A100_GPU
       - name: hardware_name
         type: string
-        tag: h100
-        _: H100_GPU
-      - name: hardware_name
-        type: string
         tag: jwc
         _: V100_GPU
       - name: hardware_name
@@ -49,7 +45,7 @@ parameterset:
         _: AMD_EPYC_2.8GHz
       - name: hardware
         type: string
-        tag: jwb|jwc|jrc|h100
+        tag: jwb|jwc|jrc
         _: gpu
       - name: hardware
         type: string
@@ -105,10 +101,6 @@ parameterset:
         type: int
         _: 4294967296
       - name: dataset_size
-        tag: "h100"
-        type: int
-        _: 2147483648
-      - name: dataset_size
         # Use a smaller dataset for CPU benchmarks, otherwise it takes forever
         tag: intel|amd
         type: int
@@ -153,9 +145,6 @@ parameterset:
         tag: jrc
         _: jrc
       - name: systemname
-        tag: h100
-        _: jrc
-      - name: systemname
         tag: jwb
         _: jwb
       - name: systemname
@@ -174,7 +163,7 @@ parameterset:
     parameter:
       - name: preprocess
         mode: text
-        tag: "jwb|jwc|amd|intel|jrc|h100"
+        tag: "jwb|jwc|amd|intel|jrc"
         _:
           $modules;
 
@@ -183,7 +172,6 @@ parameterset:
       - {name: n_cpu, _: 48, tag: intel}
       - {name: n_cpu, _: 40, tag: jwc}
       - {name: n_cpu, _: 48, tag: jrc}
-      - {name: n_cpu, _: 48, tag: h100}
       - {name: n_cpu, _: 48, tag: ipu}
       - name: SRUN_CPUS_PER_TASK
         export: true
@@ -211,10 +199,7 @@ parameterset:
         _: deepacf
       - name: account
         tag: jrc
-        _: exalab
-      - name: account
-        tag: h100
-        _: exalab        
+        _: exalab      
       - name: account
         tag: ipu
         _: exalab
@@ -235,12 +220,9 @@ parameterset:
         _: dc-ipu
       - name: queue
         tag: jrc
-        _: dc-gpu-devel
-      - name: queue
-        tag: h100
-        _: dc-h100        
+        _: dc-gpu-devel       
       - name: gres
-        tag: jwb|jwc|jrc|h100
+        tag: jwb|jwc|jrc
         _: gpu:$n_gpu
       - name: executable
         _: ${program}
