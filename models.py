@@ -291,7 +291,7 @@ def sha_unet(input_shape: tuple, hparams_unet: dict, ntargets: int, concat_out: 
 
     channels_start = hparams_unet.get("ngf", 56)
     z_branch = hparams_unet.get("z_branch", False)
-    kernel_pool = hparams_unet.get("kernel_pool", (3, 3))
+    kernel_pool = hparams_unet.get("kernel_pool", (2, 2))
     l_avgpool = hparams_unet.get("l_avgpool", True)
     l_subpixel = hparams_unet.get("l_subpixel", True)
 
@@ -341,7 +341,7 @@ def critic(input_shape: tuple, hparams_critic: dict):
     x = critic_in
     
     channels_start = hparams_critic.get("channels_start", 56)
-    channels = channels_start.copy()
+    channels = channels_start
     num_conv = int(hparams_critic.get("num_conv", 4))
     
     assert num_conv > 1, f"Number of convolutional layers is {num_conv:d}, but must be at minimum 2."
@@ -385,24 +385,27 @@ class WGAN(keras.Model):
         self.d_steps = hparams_dict.get("d_steps", 5)
         self.gp_weight = hparams_dict.get("gp_weight", 10.)
         self.recon_weight = hparams_dict.get("recon_weight", 1000.)
-        self.trainable_weights = self.generator.trainable_weights + self.critic.trainable_weights
+        self.trainable_weights_wgan = self.generator.trainable_weights + self.critic.trainable_weights
 
-    def compile(self, optimizer_dict, loss_dict, **kwargs):
+    def compile(self, optimizer, loss, **kwargs):
         """
         Set the optimizer as well as the adversarial loss functions for the generator and critic.
         Furthermore, the model gets compiled.
         """
-        self.c_optimizer = optimizer_dict["c_optimizer"]
-        self.g_optimizer = optimizer_dict["g_optimizer"]
+        assert isinstance(optimizer, dict), f"optimizer must be a dictionary with keys c_optimizer and g_optimizer, but is of type '{type(optimizer)}' "
+        assert isinstance(loss, dict), f"loss must be a dictionary with keys critic_loss, critic_gen_loss and recon_loss, but is of type '{type(loss)}' "
 
-        self.critic_loss = loss_dict["critic_loss"]
-        self.critic_gen_loss = loss_dict["critic_gen_loss"]
-        self.recon_loss = loss_dict["recon_loss"]
+        self.c_optimizer = optimizer["c_optimizer"]
+        self.g_optimizer = optimizer["g_optimizer"]
+
+        self.critic_loss = loss["critic_loss"]
+        self.critic_gen_loss = loss["critic_gen_loss"]
+        self.recon_loss = loss["recon_loss"]
 
         compile_opts = kwargs.copy()
         # drop loss dict and optimizer dict from compile_opts...
-        compile_opts.pop("loss_dict", None)
-        compile_opts.pop("optimizer_dict", None)
+        compile_opts.pop("loss", None)
+        compile_opts.pop("optimizer", None)
         # ... compile model
         super().compile(**compile_opts) 
 
