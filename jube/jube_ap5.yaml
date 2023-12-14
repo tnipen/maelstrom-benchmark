@@ -95,14 +95,14 @@ parameterset:
         type: int
         _: 1382400000
       - name: patch_size
-        type: int
-        _: (120, 96)
+        type: string
+        _: "96 120"
       - name: app
         type: string
         _: ap5
       - name: program_args
         type: string
-        _: "-a ${app} -b ${batch_size} -e ${nepochs} -d ${dataset_size} -p ${patch_size} -w ${hardware} -s ${steps_per_execution} -r ${replica}"
+        _: "-a ${app} -b ${batch_size} -e ${nepochs} -d ${dataset_size} -ps ${patch_size} -w ${hardware} -s ${steps_per_execution} -r ${replica}"
   - name: globalParameter
     parameter:
       - name: modules
