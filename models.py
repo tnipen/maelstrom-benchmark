@@ -287,7 +287,7 @@ def sha_unet(input_shape: tuple, hparams_unet: dict, ntargets: int, concat_out: 
     :return:
     """
     # basic configuration of U-Net 
-    ntargets_dyn = ntargets - 1 if hparams_unet["z_branch"] else ntargets
+    ntargets_dyn = ntargets - 1 if hparams_unet.get("z_branch", False) else ntargets
 
     channels_start = hparams_unet.get("ngf", 56)
     z_branch = hparams_unet.get("z_branch", False)

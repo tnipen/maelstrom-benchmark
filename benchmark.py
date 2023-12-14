@@ -46,6 +46,7 @@ def main():
 
     # AP1 specific arguments
     parser.add_argument('-p', default=128, type=int, help='Patch size', dest="patch_size")
+    parser.add_argument('-ps', '--patch_size', default=[96, 120], type=int, nargs="+", dest="patch_size_rect", help="Rectangular patch size")
     args = parser.parse_args()
 
     # strategy 1
@@ -94,9 +95,15 @@ def main():
         print("Num GPUs Available: ", len(gpus))
         strategy = NoStrategy()
 
-    app = applications.get(args.app_name, args.patch_size)
+    
+    if args.app_name == "ap5":
+        app = applications.get(args.app_name, args.patch_size_rect)
+    else:
+        app = applications.get(args.app_name, args.patch_size)
 
     # Settings
+    print(app.input_shape)
+    print(args.batch_size)
     batch_size_mb = 4 * np.product(app.input_shape) * args.batch_size / 1024 / 1024
 
     steps_per_epoch = int(args.dataset_size / 4 / np.product(app.input_shape) / args.batch_size / num_processes)
