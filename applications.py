@@ -117,7 +117,8 @@ class AP5(Application):
     Application 5: WGAN for statistical downscaling of ERA5 data to COSMO-REA6
     """
     def __init__(self, patch_size: tuple = (120, 96), num_predictors: int = 15, ntargets: int = 1, 
-            hparams: dict = {"batch_size": None, "generator": {"l_avgpool": False, "activation": "swish", "z_branch": True}}):
+            hparams: dict = {"batch_size": None, "generator": {"l_avgpool": False, "activation": "swish", "z_branch": True}, 
+                             "critic": {"activation": "swish"}}):
         """
         :param patch_size: size of the input patch
         :param num_predictors: number of predictors
@@ -141,7 +142,7 @@ class AP5(Application):
         sha_unet = models.Sha_unet(self.input_shape, self.hparams["generator"], self.ntargets, concat_out=True)
         critic = models.Critic((*self.input_shape[:-1], 1), self.hparams["critic"])
 
-        return models.wgan(sha_unet, critic, self.hparams)
+        return models.WGAN(sha_unet, critic, self.hparams)
     
     @property
     def input_shape(self):
