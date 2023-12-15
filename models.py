@@ -274,7 +274,7 @@ def decoder_block(inputs, skip_features, num_filters, strides_up: int = 2, l_sub
 
 
 # The U-net model architecture
-def sha_unet(input_shape: tuple, hparams_unet: dict, ntargets: int, concat_out: bool = False) -> keras.Model:
+def Sha_Unet(input_shape: tuple, hparams_unet: dict, ntargets: int, concat_out: bool = False) -> keras.Model:
     """
     Builds up U-net model architecture adapted from Sha et al., 2020 (see https://doi.org/10.1175/JAMC-D-20-0057.1).
     :param input_shape: shape of input-data
@@ -330,7 +330,7 @@ def sha_unet(input_shape: tuple, hparams_unet: dict, ntargets: int, concat_out: 
     return model
 
 # the critic-model architecture
-def critic(input_shape: tuple, hparams_critic: dict):
+def Critic(input_shape: tuple, hparams_critic: dict):
     """
     Set-up convolutional discriminator model that is followed by two dense-layers
     :param input_shape: input shape of data (either real or generated data)

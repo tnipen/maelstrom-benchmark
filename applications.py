@@ -138,8 +138,8 @@ class AP5(Application):
 
         self.hparams["batch_size"] = self.batch_size
 
-        sha_unet = models.sha_unet(self.input_shape, self.hparams["generator"], self.ntargets, concat_out=True)
-        critic = models.critic((*self.input_shape[:-1], 1), self.hparams["critic"])
+        sha_unet = models.Sha_unet(self.input_shape, self.hparams["generator"], self.ntargets, concat_out=True)
+        critic = models.Critic((*self.input_shape[:-1], 1), self.hparams["critic"])
 
         return models.wgan(sha_unet, critic, self.hparams)
     
