@@ -219,7 +219,7 @@ parameterset:
         _: dc-ipu
       - name: queue
         tag: jrc
-        _: dc-gpu
+        _: dc-gpu-devel
       - name: gres
         tag: jwb|jwc|jrc
         _: gpu:$n_gpu
@@ -249,10 +249,10 @@ patternset:
       - {name: epoch_time_max, type: float, _: "Max epoch time: $jube_pat_fp s"}
       - {name: cpu_mem, type: float, _: "CPU memory:.*peak: $jube_pat_fp GB"}
       - {name: gpu_mem, type: float, _: "GPU memory:.*peak: $jube_pat_fp GB"}
-      - {name: energy_d1, type: float, _: "Integrated Energy for Device 0: ${jube_pat_fp} W"}
-      - {name: energy_d2, type: float, _: "Integrated Energy for Device 1: ${jube_pat_fp} W"}
-      - {name: energy_d3, type: float, _: "Integrated Energy for Device 2: ${jube_pat_fp} W"}
-      - {name: energy_d4, type: float, _: "Integrated Energy for Device 3: ${jube_pat_fp} W"}
+      - {name: gpu_mem, type: float, _: "GPU memory:.*peak: $jube_pat_fp GB"}
+      - {name: total_integrated_energy, type: float, _: "Integrated Total Energy: ${jube_pat_fp} J"}
+      - {name: total_counter_energy, type: float, _: "Counter Total Energy: ${jube_pat_fp} J"}
+      - {name: max_power, type: float, _: "Max Total Power: ${jube_pat_fp} W"}
       - {name: performance, type: float, _: "Average performance:\\s+$jube_pat_fp MB/s"}
       - {name: performance_nonfirst_epoch, type: float, _: "Performance non-first epoch:\\s+$jube_pat_fp MB/s"}
       - {name: performance_min_epoch, type: float, _: "Performance min epoch:\\s+$jube_pat_fp MB/s"}
@@ -304,10 +304,9 @@ result:
             # - {title: "max epoch time [s]", _: epoch_time_max}
           - {title: "Max cpu mem", _: cpu_mem}
           - {title: "Max gpu mem", _: gpu_mem}
-          - {title: "Energy (W) device 1", _: energy_d1}
-          - {title: "Energy (W) device 2", _: energy_d2}
-          - {title: "Energy (W) device 3", _: energy_d3}
-          - {title: "Energy (W) device 4", _: energy_d4}
+          - {title: "Integrated Total Energy [J]", _: total_integrated_energy}
+          - {title: "Counter Total Energy [J]", _: total_counter_energy}
+          - {title: "Max Total Power [W]", _: max_power}
 
 step:
   - name: setup_venv

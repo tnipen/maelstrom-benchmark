@@ -204,21 +204,19 @@ def main():
     #print("Energy data:")
     measured_scope.df.to_csv("EnergyFile-NVDA.csv") 
     print("Energy-per-GPU-list:")
+    max_power=measured_scope.df.loc[:,(measured_scope.df.columns != 'timestamps')].max().max()
+    print(f"Max Total Power: {max_power:.2f} W")
+    
     if args.hardware in ['gpu','ipu']:
         energy_int = measured_scope.energy() 
-        n_devices = len(energy_int)
-        for n in range(n_devices):
-            print(f"   Integrated Energy for Device {n}: {energy_int[n]:.2f} W")
-                
+        print(f"Integrated Total Energy: {np.sum(energy_int):.2f} J")
         f.write(f"integrated: {energy_int}") 
         f.close()
     elif args.hardware=='arm':
         energy_int,energy_cnt = measured_scope.energy()
-        n_devices = len(energy_int)
-        for n in range(n_devices):
-            print(f"   Integrated Energy for Device {n}: {energy_int[n]:.2f} W")
-            print(f"   Counter Energy for Device {n}: {energy_cnt[n]:.2f} W")
-
+        print(f"Integrated Total Energy: {np.sum(energy_int):.2f} J")
+        print(f"Counter Total Energy: {np.sum(energy_cnt):.2f} J")
+        
         f.write(f"integrated: {energy_int}") 
         f.write(f"from counter: {energy_cnt}")
         f.close()

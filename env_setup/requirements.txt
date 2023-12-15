@@ -1,2 +1,3 @@
 pynvml
+psutil
 # FIGURE OUT HOW TO INSTALL https://github.com/ROCm/rocm_smi_lib?tab=readme-ov-file
