@@ -180,7 +180,7 @@ parameterset:
         _: 1
       - name: n_procs
         tag: "!ipu"
-        _: 1
+        _: 1,4
       - name: n_procs
         tag: ipu
         _: 1
