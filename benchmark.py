@@ -105,7 +105,6 @@ def main():
             batch_size_mb = app.get_batch_size_mb()
 
             steps_per_epoch = int(args.dataset_size / 4 / app.batch_bytes / args.batch_size / num_processes)
-            steps_per_epoch=1000
 
             # Adjust steps_per_execution so that it is a multiple of steps_per_execution * replicas
             if args.steps_per_execution is None:

@@ -85,7 +85,7 @@ parameterset:
         # _: 80, 160, 320, 640
       - name: batch_size
         type: int
-        _: 2
+        _: 256
       - name: replica
         tag: ipu
         type: int
