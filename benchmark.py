@@ -21,6 +21,7 @@ def main():
     parser.add_argument('-d', type=float, help='Dataset size in bytes', dest="dataset_size", required=True)
     parser.add_argument('-b', default=1, type=int, help="Batch size (number of samples per batch)", dest="batch_size")
     parser.add_argument('-w', help='What hardware to run this on', dest='hardware', choices=["gpu", "cpu", "ipu"], required=True)
+    parser.add_argument('-wn', help='Hardware name', dest='hardware_name', choices=["A100_GPU", "GC200_IPU", "H100_GPU","MI250_GPU"], required=True)
     parser.add_argument('--debug', help='Turn on debugging information', action="store_true")
 
     # IPU specific arguments
@@ -40,7 +41,11 @@ def main():
     #   dataset size
     #   batch size
     
-    energy_profiler = energy_utils.get_energy_profiler(args.hardware)
+    if args.hardware_name=='MI250_GPU':
+        sys.path.append('/opt/rocm/libexec/rocm_smi')
+
+    
+    energy_profiler = energy_utils.get_energy_profiler(args.hardware_name)
     
     with energy_profiler() as measured_scope:
         print('Measuring Energy during main() call')
@@ -100,7 +105,8 @@ def main():
             batch_size_mb = app.get_batch_size_mb()
 
 
-            steps_per_epoch = int(args.dataset_size / 4 / app.batch_bytes / args.batch_size / num_processes)
+            #steps_per_epoch = int(args.dataset_size / 4 / app.batch_bytes / args.batch_size / num_processes)
+            steps_per_epoch = 100
 
             # Adjust steps_per_execution so that it is a multiple of steps_per_execution * replicas
             if args.steps_per_execution is None:
@@ -207,12 +213,7 @@ def main():
     max_power=measured_scope.df.loc[:,(measured_scope.df.columns != 'timestamps')].max().max()
     print(f"Max Power: {max_power:.2f} W")
     
-    if args.hardware in ['gpu','ipu']:
-        energy_int = measured_scope.energy() 
-        print(f"Integrated Total Energy: {np.sum(energy_int):.2f} J")
-        f.write(f"integrated: {energy_int}") 
-        f.close()
-    elif args.hardware=='arm':
+    if args.hardware_name=='MI250_GPU':
         energy_int,energy_cnt = measured_scope.energy()
         print(f"Integrated Total Energy: {np.sum(energy_int):.2f} J")
         print(f"Counter Total Energy: {np.sum(energy_cnt):.2f} J")
@@ -220,7 +221,14 @@ def main():
         f.write(f"integrated: {energy_int}") 
         f.write(f"from counter: {energy_cnt}")
         f.close()
-
+    elif args.hardware_name in ['A100_GPU','H100_GPU','GC200_IPU']:
+        energy_int = measured_scope.energy() 
+        print(f"Integrated Total Energy: {np.sum(energy_int):.2f} J")
+        f.write(f"integrated: {energy_int}") 
+        f.close()
+        
+        
+        
 if __name__ == "__main__":
     
 

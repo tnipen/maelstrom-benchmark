@@ -29,6 +29,7 @@ parameterset:
       - name: program
         tag: "mi250x"
         type: string
+        type: string
         _: --mpi=pmi2 apptainer run $jube_benchmark_home/../mi250x.sif -- python -u $jube_benchmark_home/../benchmark.py
       - name: hardware_name
         type: string
@@ -113,7 +114,7 @@ parameterset:
       - name: dataset_size
         tag: "jrc"
         type: int
-        _: 17179869184
+        _: 268435456
       - name: dataset_size
         # Use a smaller dataset for CPU benchmarks, otherwise it takes forever
         tag: intel|amd
@@ -127,7 +128,7 @@ parameterset:
         _: ap1
       - name: program_args
         type: string
-        _: "-a ${app} -b ${batch_size} -e ${nepochs} -d ${dataset_size} -p ${patch_size} -w ${hardware} -s ${steps_per_execution} -r ${replica}"
+        _: "-a ${app} -b ${batch_size} -e ${nepochs} -d ${dataset_size} -p ${patch_size} -w ${hardware} -wn ${hardware_name} -s ${steps_per_execution} -r ${replica}"
   - name: globalParameter
     parameter:
       - name: create_env
@@ -212,7 +213,7 @@ parameterset:
         type: int
         _:  $n_cpu // $n_procs
       - name: timelimit
-        _: "00:30:00"
+        _: "00:60:00"
       - name: account
         tag: jwb|jwc|amd|intel
         _: deepacf
