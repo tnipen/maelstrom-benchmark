@@ -205,7 +205,7 @@ def main():
     measured_scope.df.to_csv("EnergyFile-NVDA.csv") 
     print("Energy-per-GPU-list:")
     max_power=measured_scope.df.loc[:,(measured_scope.df.columns != 'timestamps')].max().max()
-    print(f"Max Total Power: {max_power:.2f} W")
+    print(f"Max Power: {max_power:.2f} W")
     
     if args.hardware in ['gpu','ipu']:
         energy_int = measured_scope.energy() 
