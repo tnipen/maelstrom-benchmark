@@ -272,7 +272,7 @@ patternset:
       - {name: gpu_mem, type: float, _: "GPU memory:.*peak: $jube_pat_fp GB"}
       - {name: total_integrated_energy, type: float, _: "Integrated Total Energy: ${jube_pat_fp} J"}
       - {name: total_counter_energy, type: float, _: "Counter Total Energy: ${jube_pat_fp} J"}
-      - {name: max_power, type: float, _: "Max  Power: ${jube_pat_fp} W"}
+      - {name: max_power, type: float, _: "Max Power: ${jube_pat_fp} W"}
       - {name: performance, type: float, _: "Average performance:\\s+$jube_pat_fp MB/s"}
       - {name: performance_nonfirst_epoch, type: float, _: "Performance non-first epoch:\\s+$jube_pat_fp MB/s"}
       - {name: performance_min_epoch, type: float, _: "Performance min epoch:\\s+$jube_pat_fp MB/s"}
@@ -326,7 +326,7 @@ result:
           - {title: "Max gpu mem", _: gpu_mem}
           - {title: "Integrated Total Energy [J]", _: total_integrated_energy}
           - {title: "Counter Total Energy [J]", _: total_counter_energy}
-          - {title: "Max  Power [W]", _: max_power}
+          - {title: "Max Power [W]", _: max_power}
 
 step:
   - name: setup_venv
