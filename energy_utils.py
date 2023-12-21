@@ -4,15 +4,15 @@ import pandas as pd
 from multiprocessing import Process, Queue, Event
 import sys
 
-def get_energy_profiler(hardware):
-    if hardware == "ipu":
+def get_energy_profiler(hardware_name):
+    if hardware_name == "GC200_IPU":
         return GetIPUPower
-    elif hardware == 'gpu':
+    elif hardware_name in ['A100_GPU','H100_GPU']:
         return GetNVIDIAPower
-    elif hardware == 'amd':
+    elif hardware_name == 'MI250_GPU':
         return GetARMPower
     else:
-        raise NotImplementedError(f"Unknown hardware {name}")
+        raise NotImplementedError(f"Unknown hardware_name {hardware_name}")
 
 #NVIDIA GPUS
 class GetNVIDIAPower(object):
@@ -79,13 +79,13 @@ class GetARMPower(object):
         return self
     
     def _power_loop(self,queue, event, interval):
-        import rsmiBindings as rsmiBindings
-        ret = rsmiBindings.rocmsmi.rsmi_init(0)
-        if rsmi_status_t.RSMI_STATUS_SUCCESS != ret:
+        import rsmiBindings as rmsi
+        ret = rmsi.rocmsmi.rsmi_init(0)
+        if rmsi.rsmi_status_t.RSMI_STATUS_SUCCESS != ret:
             raise RuntimeError("Failed initializing rocm_smi library")
-        device_count = c_uint32(0)
-        ret = rsmiBindings.rocmsmi.rsmi_num_monitor_devices(byref(device_count))
-        if rsmi_status_t.RSMI_STATUS_SUCCESS != ret:
+        device_count = rmsi.c_uint32(0)
+        ret = rmsi.rocmsmi.rsmi_num_monitor_devices(rmsi.byref(device_count))
+        if rmsi.rsmi_status_t.RSMI_STATUS_SUCCESS != ret:
             raise RuntimeError("Failed enumerating ROCm devices")
         device_list = list(range(device_count.value))
         power_value_dict = {
@@ -95,22 +95,22 @@ class GetARMPower(object):
         last_timestamp = time.time()
         start_energy_list = []
         for id in device_list:
-            energy = c_uint64()
-            energy_timestamp = c_uint64()
-            energy_resolution = c_float()
-            ret = rsmiBindings.rocmsmi.rsmi_dev_energy_count_get(id, 
-                    byref(energy),
-                    byref(energy_resolution),
-                    byref(energy_timestamp))
-            if rsmi_status_t.RSMI_STATUS_SUCCESS != ret:
+            energy = rmsi.c_uint64()
+            energy_timestamp = rmsi.c_uint64()
+            energy_resolution = rmsi.c_float()
+            ret = rmsi.rocmsmi.rsmi_dev_energy_count_get(id, 
+                    rmsi.byref(energy),
+                    rmsi.byref(energy_resolution),
+                    rmsi.byref(energy_timestamp))
+            if rmsi.rsmi_status_t.RSMI_STATUS_SUCCESS != ret:
                 raise RuntimeError(f"Failed getting Power of device {id}")
             start_energy_list.append(round(energy.value*energy_resolution.value,2)) # unit is uJ
 
         while not event.is_set():
             for id in device_list:
-                power = c_uint32()
-                ret = rsmiBindings.rocmsmi.rsmi_dev_power_ave_get(id, 0, byref(power))
-                if rsmi_status_t.RSMI_STATUS_SUCCESS != ret:
+                power = rmsi.c_uint32()
+                ret = rmsi.rocmsmi.rsmi_dev_power_ave_get(id, 0, rmsi.byref(power))
+                if rmsi.rsmi_status_t.RSMI_STATUS_SUCCESS != ret:
                     raise RuntimeError(f"Failed getting Power of device {id}")
                 power_value_dict[id].append(power.value*1e-6) # value is uW
             timestamp = time.time()
@@ -121,14 +121,14 @@ class GetARMPower(object):
 
         energy_list = [0.0 for _ in device_list]
         for id in device_list:
-            energy = c_uint64()
-            energy_timestamp = c_uint64()
-            energy_resolution = c_float()
-            ret = rsmiBindings.rocmsmi.rsmi_dev_energy_count_get(id, 
-                    byref(energy),
-                    byref(energy_resolution),
-                    byref(energy_timestamp))
-            if rsmi_status_t.RSMI_STATUS_SUCCESS != ret:
+            energy = rmsi.c_uint64()
+            energy_timestamp = rmsi.c_uint64()
+            energy_resolution = rmsi.c_float()
+            ret = rmsi.rocmsmi.rsmi_dev_energy_count_get(id, 
+                    rmsi.byref(energy),
+                    rmsi.byref(energy_resolution),
+                    rmsi.byref(energy_timestamp))
+            if rmsi.rsmi_status_t.RSMI_STATUS_SUCCESS != ret:
                 raise RuntimeError(f"Failed getting Power of device {id}")
             energy_list[id] = round(energy.value*energy_resolution.value,2) - start_energy_list[id]
 

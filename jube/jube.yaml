@@ -25,7 +25,7 @@ parameterset:
       - name: program
         tag: "h100"
         type: string
-        _: --mpi=pmi2 apptainer run --nv $jube_benchmark_home/../h100.sif -- python -u $jube_benchmark_home/../benchmark.py
+        _: --mpi=pspmix env PMIX_SECURITY_MODE=native apptainer run --nv $jube_benchmark_home/../h100.sif -- python -u $jube_benchmark_home/../benchmark.py
       - name: program
         tag: "mi250x"
         type: string
@@ -85,11 +85,11 @@ parameterset:
         # _: 80, 160, 320, 640
       - name: batch_size
         type: int
-        _: 2
+        _: 32
       - name: replica
         tag: ipu
         type: int
-        _: 1,2,4
+        _: 1
       - name: replica
         tag: "!ipu"
         type: int
@@ -97,7 +97,7 @@ parameterset:
       - name: steps_per_execution
         tag: ipu
         type: int
-        _: 4000
+        _: 4000000
       - name: steps_per_execution
         tag: "!ipu"
         type: int
@@ -127,7 +127,7 @@ parameterset:
         _: ap1
       - name: program_args
         type: string
-        _: "-a ${app} -b ${batch_size} -e ${nepochs} -d ${dataset_size} -p ${patch_size} -w ${hardware} -s ${steps_per_execution} -r ${replica}"
+        _: "-a ${app} -b ${batch_size} -e ${nepochs} -d ${dataset_size} -p ${patch_size} -w ${hardware} -wn ${hardware_name} -r ${replica}"
   - name: globalParameter
     parameter:
       - name: create_env
@@ -199,7 +199,7 @@ parameterset:
         _: 1
       - name: n_procs
         tag: "!ipu"
-        _: 1
+        _: 4
       - name: n_procs
         tag: ipu
         _: 1
@@ -333,7 +333,7 @@ result:
 
 step:
   - name: setup_venv
-    active: true
+    active: false
     use:
       - globalParameter
       - systemParameter

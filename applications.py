@@ -113,17 +113,17 @@ class AP1(Application):
                         )
         
         self.features = 16
-        self.levels = 3
+        self.levels = 6
         self.pool_size = 2
-        self.conv_size = 3
-        self.upsampling_type = 'conv_transpose'
+        self.conv_size = 1
+        self.upsampling_type = 'upsampling'
         self.num_predictors = 17
         self.patch_size = self.args.patch_size
         self.num_outputs = 3
         
         
     def get_model(self):
-        return models.Unet(self.input_shape, self.num_outputs, self.features, self.levels, self.pool_size, self.conv_size, self.upsampling_type)
+        return models.Unet(self.input_shape, self.num_outputs, self.features, self.levels, self.pool_size, self.conv_size, self.upsampling_type, batch_normalization=True, activation='leaky_relu')
 
     @property
     def input_shape(self):

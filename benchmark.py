@@ -21,6 +21,7 @@ def main():
     parser.add_argument('-d', type=float, help='Dataset size in bytes', dest="dataset_size", required=True)
     parser.add_argument('-b', default=1, type=int, help="Batch size (number of samples per batch)", dest="batch_size")
     parser.add_argument('-w', help='What hardware to run this on', dest='hardware', choices=["gpu", "cpu", "ipu"], required=True)
+    parser.add_argument('-wn', help='Hardware name', dest='hardware_name', choices=["A100_GPU", "GC200_IPU", "H100_GPU","MI250_GPU"], required=True)
     parser.add_argument('--debug', help='Turn on debugging information', action="store_true")
 
     # IPU specific arguments
@@ -39,8 +40,13 @@ def main():
     #   patch size
     #   dataset size
     #   batch size
+    print(args.hardware_name)
     
-    energy_profiler = energy_utils.get_energy_profiler(args.hardware)
+    if args.hardware_name=='MI250_GPU':
+        sys.path.append('/opt/rocm/libexec/rocm_smi')
+
+    
+    energy_profiler = energy_utils.get_energy_profiler(args.hardware_name)
     
     with energy_profiler() as measured_scope:
         print('Measuring Energy during main() call')
@@ -72,6 +78,8 @@ def main():
                             ipu.config.DeviceConnectionType.ON_DEMAND
                             )# Optional - allows parallel execution
                 ipu_config.auto_select_ipus = args.replica
+                # ipu_config.io_tiles.num_io_tiles = 128
+                # ipu_config.io_tiles.place_ops_on_io_tiles = True
                 ipu_config.configure_ipu_system()
 
                 strategy = ipu.ipu_strategy.IPUStrategy()        
@@ -135,6 +143,7 @@ def main():
                         model.compile(optimizer=optimizer, loss=loss, steps_per_execution=steps_per_execution)
                     else:
                         model.compile(optimizer=optimizer, loss=loss, loss_weights=loss_weights,steps_per_execution=steps_per_execution)
+                    # model.set_gradient_accumulation_options(gradient_accumulation_steps_per_replica=10)
                 else:
                     if args.app_name != 'ap3' :
                         model.compile(optimizer=optimizer, loss=loss)
@@ -207,12 +216,7 @@ def main():
     max_power=measured_scope.df.loc[:,(measured_scope.df.columns != 'timestamps')].max().max()
     print(f"Max Total Power: {max_power:.2f} W")
     
-    if args.hardware in ['gpu','ipu']:
-        energy_int = measured_scope.energy() 
-        print(f"Integrated Total Energy: {np.sum(energy_int):.2f} J")
-        f.write(f"integrated: {energy_int}") 
-        f.close()
-    elif args.hardware=='arm':
+    if args.hardware_name=='MI250_GPU':
         energy_int,energy_cnt = measured_scope.energy()
         print(f"Integrated Total Energy: {np.sum(energy_int):.2f} J")
         print(f"Counter Total Energy: {np.sum(energy_cnt):.2f} J")
@@ -220,7 +224,14 @@ def main():
         f.write(f"integrated: {energy_int}") 
         f.write(f"from counter: {energy_cnt}")
         f.close()
-
+    elif args.hardware_name in ['A100_GPU','H100_GPU','GC200_IPU']:
+        energy_int = measured_scope.energy() 
+        print(f"Integrated Total Energy: {np.sum(energy_int):.2f} J")
+        f.write(f"integrated: {energy_int}") 
+        f.close()
+        
+        
+        
 if __name__ == "__main__":
     
 

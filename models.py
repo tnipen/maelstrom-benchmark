@@ -24,31 +24,56 @@ class Unet(keras.Model):
         input_shape,
         num_outputs,
         features=16,
-        levels=3,
+        layers=6,
         pool_size=2,
-        conv_size=3,
-        upsampling_type="conv_transpose",
+        conv_size=1,
+        upsampling_type="upsampling",
+        separable=False,
+        with_leadtime=False,
+        batch_normalization=True,
+        downsampling_type="max",
+        activation="relu",
+        skipcon=True,
+        feature_ratio=2,
+        bn_momentum=0.99,
+        padding="same",
+        leadtime_index=None,
+        bias_indices=None,
+
     ):
-        """U-net in Application 1
+        """U-net
 
         Args:
             features (int): Number of features in the first layer
-            levels (int): Depth of the U-net
+            layers (int): Depth of the U-net
             pool_size (int): Pooling ratio (> 0)
             upsampling_type (str): One of "upsampling" or "conv_transpose"
             conv_size (int): Convolution size (> 0)
+            with_leadtime (bool): Should the last layer be leadtime dependent?
         """
-        if upsampling_type not in ["upsampling", "conv_transpose"]:
+        if upsampling_type not in ["upsampling", "conv_transpose", "upsampling_nearest"]:
             raise ValueError(f"Unknown upsampling type {upsampling_type}")
 
-        # print(f"Initializing a U-Net with shape {input_shape}")
-
-        self._num_outputs = num_outputs
         self._features = features
-        self._levels = levels
+        self._layers = layers
         self._pool_size = pool_size
         self._conv_size = conv_size
+        self._with_leadtime = with_leadtime
         self._upsampling_type = upsampling_type
+        self._separable = separable
+        self._batch_normalization = batch_normalization
+        self._downsampling_type = downsampling_type
+        self._activation = activation
+        self._skipcon = skipcon
+        self._feature_ratio = feature_ratio
+        self._bn_momentum = bn_momentum
+        self._padding = padding
+        self._leadtime_index = leadtime_index
+        self._bias_indices = bias_indices
+        self._num_outputs = num_outputs
+
+        if downsampling_type not in ["max", "mean"]:
+            raise ValuerError(f"Unknown downsampling type {downsampling_type}")
 
         # Build the model
         inputs = keras.layers.Input(input_shape)
@@ -58,62 +83,171 @@ class Unet(keras.Model):
 
     def get_outputs(self, inputs):
         outputs = inputs
-        levels = list()
+        layers = list()
 
         features = self._features
+        padding = self._padding
 
-        pool_size = [1, self._pool_size, self._pool_size]
-        hood_size = [1, self._conv_size, self._conv_size]
+        if self._separable:
+            Conv = maelstrom.layers.DepthwiseConv2D
+            Conv = maelstrom.layers.SeparableConv2D
+            pool_size = [1, self._pool_size, self._pool_size]
+            conv_size = [self._conv_size, self._conv_size]
+            up_pool_size = [self._pool_size, self._pool_size]
+            up_conv_size = [1, self._conv_size, self._conv_size]
+            def Conv(output, features, conv_size, activation_name, batch_normalization):
+                for i in range(2):
+                    output = maelstrom.layers.SeparableConv3D(features, conv_size, padding=padding)(output)
+                    if batch_normalization:
+                        output = keras.layers.BatchNormalization(momentum=self._bn_momentum, scale=False, center=False)(output)
+                    activation_layer = get_activation(activation_name)
+                    output = activation_layer(output)
+                return output
+        else:
+            def Conv(output, features, conv_size, activation_name, batch_normalization):
+                for i in range(2):
+                    output = keras.layers.Conv3D(features, conv_size, padding=padding)(output)
+                    if batch_normalization:
+                        output = keras.layers.BatchNormalization(momentum=self._bn_momentum, scale=False, center=False)(output)
+                        # Activation should be after batch normalization
+                    activation_layer = get_activation(activation_name)
+                    output = activation_layer(output)
+                return output
 
-        Conv = keras.layers.Conv3D
-        if self._upsampling_type == "upsampling":
-            UpConv = keras.layers.UpSampling3D
-        elif self._upsampling_type == "conv_transpose":
-            UpConv = keras.layers.Conv3DTranspose
+            pool_size = [1, self._pool_size, self._pool_size]
+            conv_size = [1, self._conv_size, self._conv_size]
+            up_pool_size = pool_size
+            up_conv_size = conv_size
 
         # Downsampling
         # conv -> conv -> max_pool
-        for i in range(self._levels - 1):
-            outputs = Conv(features, hood_size, activation="relu", padding="same")(
-                outputs
-            )
-            outputs = Conv(features, hood_size, activation="relu", padding="same")(
-                outputs
-            )
-            levels += [outputs]
+        for i in range(self._layers - 1):
+            outputs = Conv(outputs, features, conv_size, self._activation, self._batch_normalization)
+            layers += [outputs]
             # print(i, outputs.shape)
 
-            outputs = keras.layers.MaxPooling3D(pool_size=pool_size)(outputs)
-            features *= 2
+            name = f"L{i + 1}_pool"
+            if self._downsampling_type == "max":
+                outputs = keras.layers.MaxPooling3D(pool_size=pool_size, name=name)(outputs)
+            elif self._downsampling_type == "min":
+                outputs = keras.layers.MinPooling3D(pool_size=pool_size, name=name)(outputs)
+            elif self._downsampling_type == "mean":
+                outputs = keras.layers.AveragePooling3D(pool_size=pool_size, name=name)(outputs)
+            features *= self._feature_ratio
 
         # conv -> conv
-        outputs = Conv(features, hood_size, activation="relu", padding="same")(
-            outputs
-        )
-        outputs = Conv(features, hood_size, activation="relu", padding="same")(
-            outputs
-        )
+        outputs = Conv(outputs, features, conv_size, self._activation, self._batch_normalization)
 
         # upconv -> concat -> conv -> conv
-        for i in range(self._levels - 2, -1, -1):
-            features /= 2
-            outputs = UpConv(features, hood_size, strides=pool_size, padding="same")(outputs)
+        for i in range(self._layers - 2, -1, -1):
+            features /= self._feature_ratio
+            activation_layer = get_activation(self._activation)
+            # Upsampling
+            if self._upsampling_type == "upsampling":
+                # The original paper used this kind of upsampling
+                outputs = keras.layers.Conv3D(features, conv_size,
+                        activation=activation_layer, padding=padding)(
+                    outputs
+                )
+                UpConv = keras.layers.UpSampling3D
+                outputs = UpConv(pool_size, name=f"L{i + 2}_up")(outputs)
+                activation_layer = get_activation(self._activation)
+                # Do a 2x2 convolution to simulate "learnable" bilinear interpolation
+                outputs = keras.layers.Conv3D(features, [1, 2, 2], activation=activation_layer,
+                        padding=padding)(outputs)
+            elif self._upsampling_type == "upsampling_nearest":
+                outputs = keras.layers.Conv3D(features, conv_size,
+                        activation=activation_layer, padding="same")(
+                    outputs
+                )
+                UpConv = keras.layers.UpSampling3D
+                outputs = UpConv(pool_size)(outputs)
+                # Don't do a 2x2 convolution
+            elif self._upsampling_type == "conv_transpose":
+                # Some use this kind of upsampling. This seems to create a checkered pattern in the
+                # output, at least for me.
+                UpConv = keras.layers.Conv3DTranspose
+                outputs = UpConv(features, up_conv_size, strides=pool_size, padding=padding)(outputs)
+                outputs = keras.layers.Conv3D(features, [1, 2, 2], activation=activation_layer,
+                        padding=padding)(outputs)
 
-            # print(levels[i].shape, outputs.shape)
-            outputs = keras.layers.concatenate((levels[i], outputs), axis=-1)
-            outputs = Conv(features, hood_size, activation="relu", padding="same")(
-                outputs
-            )
-            outputs = Conv(features, hood_size, activation="relu", padding="same")(
-                outputs
-            )
+            # if i == 0 or self._skipcon:
+            if self._skipcon:
+                # collapse = tf.keras.layers.reshape(layers[i], [outputs)
+                # crop = tf.keras.layers.CenterCrop(outputs.shape[2], outputs.shape[3])(layers[i])
+                if self._padding == "valid":
+                    # Center and crop the skip-connection tensor, since it is larger than the
+                    # tensor passed from the lower level
+                    d00 = (layers[i].shape[2] - outputs.shape[2])
+                    d10 = (layers[i].shape[2] - outputs.shape[2]) - d00
+                    d01 = (layers[i].shape[3] - outputs.shape[3])
+                    d11 = (layers[i].shape[3] - outputs.shape[3]) - d01
+                    # print(d00, d10, d01, d11)
+                    # Would be nice to use tf.keras.layers.CenterCrop, but this doesn't work for 5D
+                    # tensors.
+                    crop = tf.keras.layers.Cropping3D(((0, 0), (d00, d10), (d01, d11)))(layers[i])
+                    outputs = keras.layers.concatenate((crop, outputs), axis=-1)
+                elif self._padding == "reflect":
+                    d00 = (layers[i].shape[2] - outputs.shape[2]) // 2
+                    d10 = (layers[i].shape[2] - outputs.shape[2]) - d00
+                    d01 = (layers[i].shape[3] - outputs.shape[3]) // 2
+                    d11 = (layers[i].shape[3] - outputs.shape[3]) - d01
+                    paddings = tf.constant([[0, 0], [0, 0], [d00, d10], [d01, d11], [0, 0]])
+                    expanded = tf.pad(outputs, paddings, "REFLECT")
+                    # print(paddings, layers[i].shape, outputs.shape, expanded.shape)
+                    outputs = keras.layers.concatenate((layers[i], expanded), axis=-1)
+                else:
+                    outputs = keras.layers.concatenate((layers[i], outputs), axis=-1, name=f"L{i + 1}_concat")
+            outputs = Conv(outputs, features, conv_size, self._activation, self._batch_normalization)
+
+        # Create a separate branch with f(leadtime) multiplied by each bias field
+        if self._leadtime_index is not None and len(self._bias_indices) > 0:
+            leadtime_input = inputs[..., self._leadtime_index]
+            leadtime_input = tf.expand_dims(leadtime_input, -1)
+            bias_inputs = [tf.expand_dims(inputs[..., i], -1) for i in self._bias_indices]
+
+            leadtime_mult = list()
+            for i in range(len(bias_inputs)):
+                curr_leadtime_input = leadtime_input
+                # Create a flexible function for leadtime
+                for j in range(4):
+                    activation_layer = "tanh"
+                    curr_leadtime_input = keras.layers.Dense(5, activation=activation_layer)(curr_leadtime_input)
+                curr_leadtime_input = keras.layers.Dense(1, name=f"leadtime_bias_{i}")(curr_leadtime_input)
+
+                # Multiply the leadtime function by the bias
+                curr = tf.multiply(curr_leadtime_input, bias_inputs[i])
+                leadtime_mult += [curr]
+            outputs = keras.layers.concatenate(leadtime_mult + [outputs], axis=-1)
 
         # Dense layer at the end
-        outputs = keras.layers.Dense(self._num_outputs, activation="linear")(
-            outputs
-        )
+        if self._with_leadtime:
+            layer = keras.layers.Dense(self._num_outputs, activation="linear")
+            outputs = maelstrom.layers.LeadtimeLayer(layer, "dependent")(outputs)
+        else:
+            outputs = keras.layers.Dense(self._num_outputs, activation="linear")(
+                outputs
+            )
 
         return outputs
+
+def get_activation(name, *args, **kwargs):
+    """Get an activation layer corresponding to the name
+
+    Args:
+        name (str): Name of layer
+        args (list): List of arguments to layer
+        kwargs (dict): Named arguments to layer
+
+    Returns:
+        keras.layer.Layer: An initialized layer
+    """
+
+    if name.lower() == "leakyrelu":
+        return keras.layers.LeakyReLU(*args, **kwargs)
+        # return keras.layers.LeakyReLU(alpha=0.05)
+    else:
+        return keras.layers.Activation(name)
 
 class Dnn(keras.Model):
     def __init__(
