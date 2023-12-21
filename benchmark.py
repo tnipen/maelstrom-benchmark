@@ -107,7 +107,6 @@ def main():
             # Settings
             batch_size_mb = app.get_batch_size_mb()
 
-
             steps_per_epoch = int(args.dataset_size / 4 / app.batch_bytes / args.batch_size / num_processes)
 
             # Adjust steps_per_execution so that it is a multiple of steps_per_execution * replicas
@@ -214,7 +213,7 @@ def main():
     measured_scope.df.to_csv("EnergyFile-NVDA.csv") 
     print("Energy-per-GPU-list:")
     max_power=measured_scope.df.loc[:,(measured_scope.df.columns != 'timestamps')].max().max()
-    print(f"Max Total Power: {max_power:.2f} W")
+    print(f"Max Power: {max_power:.2f} W")
     
     if args.hardware_name=='MI250_GPU':
         energy_int,energy_cnt = measured_scope.energy()

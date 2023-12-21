@@ -25,9 +25,11 @@ parameterset:
       - name: program
         tag: "h100"
         type: string
-        _: --mpi=pspmix env PMIX_SECURITY_MODE=native apptainer run --nv $jube_benchmark_home/../h100.sif -- python -u $jube_benchmark_home/../benchmark.py
+        _: -n 2 --mpi=pspmix env PMIX_SECURITY_MODE=native apptainer run --nv $jube_benchmark_home/../h100.sif -- python -u $jube_benchmark_home/../benchmark.py        
+        #_: --mpi=pmi2 apptainer run --nv $jube_benchmark_home/../h100.sif -- python -u $jube_benchmark_home/../benchmark.py
       - name: program
         tag: "mi250x"
+        type: string
         type: string
         _: --mpi=pmi2 apptainer run $jube_benchmark_home/../mi250x.sif -- python -u $jube_benchmark_home/../benchmark.py
       - name: hardware_name
@@ -113,7 +115,7 @@ parameterset:
       - name: dataset_size
         tag: "jrc"
         type: int
-        _: 17179869184
+        _: 268435456
       - name: dataset_size
         # Use a smaller dataset for CPU benchmarks, otherwise it takes forever
         tag: intel|amd
@@ -212,7 +214,7 @@ parameterset:
         type: int
         _:  $n_cpu // $n_procs
       - name: timelimit
-        _: "00:30:00"
+        _: "00:60:00"
       - name: account
         tag: jwb|jwc|amd|intel
         _: deepacf
@@ -275,7 +277,7 @@ patternset:
       - {name: gpu_mem, type: float, _: "GPU memory:.*peak: $jube_pat_fp GB"}
       - {name: total_integrated_energy, type: float, _: "Integrated Total Energy: ${jube_pat_fp} J"}
       - {name: total_counter_energy, type: float, _: "Counter Total Energy: ${jube_pat_fp} J"}
-      - {name: max_power, type: float, _: "Max  Power: ${jube_pat_fp} W"}
+      - {name: max_power, type: float, _: "Max Power: ${jube_pat_fp} W"}
       - {name: performance, type: float, _: "Average performance:\\s+$jube_pat_fp MB/s"}
       - {name: performance_nonfirst_epoch, type: float, _: "Performance non-first epoch:\\s+$jube_pat_fp MB/s"}
       - {name: performance_min_epoch, type: float, _: "Performance min epoch:\\s+$jube_pat_fp MB/s"}
@@ -329,7 +331,7 @@ result:
           - {title: "Max gpu mem", _: gpu_mem}
           - {title: "Integrated Total Energy [J]", _: total_integrated_energy}
           - {title: "Counter Total Energy [J]", _: total_counter_energy}
-          - {title: "Max  Power [W]", _: max_power}
+          - {title: "Max Power [W]", _: max_power}
 
 step:
   - name: setup_venv
