@@ -30,7 +30,6 @@ parameterset:
       - name: program
         tag: "mi250x"
         type: string
-        type: string
         _: --mpi=pmi2 apptainer run $jube_benchmark_home/../mi250x.sif -- python -u $jube_benchmark_home/../benchmark.py
       - name: hardware_name
         type: string
