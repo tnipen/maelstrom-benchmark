@@ -87,11 +87,22 @@ parameterset:
         # _: 80, 160, 320, 640
       - name: batch_size
         type: int
-        _: 32
+        _: 1
+        # _: 1,2,4,8,16,32,64,128,256
+        # _: 2
+      - name: gradient_accumulation_steps
+        type: int
+        tag: "!ipu"
+        _: 1
+      - name: gradient_accumulation_steps
+        type: int
+        tag: ipu
+        # _: 2,4,8,16,32,64
+        _: 1
       - name: replica
         tag: ipu
         type: int
-        _: 1
+        _: 4
       - name: replica
         tag: "!ipu"
         type: int
@@ -129,7 +140,7 @@ parameterset:
         _: ap1
       - name: program_args
         type: string
-        _: "-a ${app} -b ${batch_size} -e ${nepochs} -d ${dataset_size} -p ${patch_size} -w ${hardware} -wn ${hardware_name} -r ${replica}"
+        _: "-a ${app} -b ${batch_size} -e ${nepochs} -d ${dataset_size} -p ${patch_size} -w ${hardware} -wn ${hardware_name} -s ${steps_per_execution} -g ${gradient_accumulation_steps} -r ${replica}"
   - name: globalParameter
     parameter:
       - name: create_env
@@ -264,6 +275,7 @@ patternset:
       - {name: num_weights, type: int, _: "Num trainable weights: ${jube_pat_int}"}
       - {name: dataset_size_mb, type: float, _: "Dataset size: ${jube_pat_fp} MB"}
       - {name: batch_size_mb, type: float, _: "Batch size: ${jube_pat_fp} MB"}
+      - {name: effective_batch_size_mb, type: float, _: "Effective batch size: ${jube_pat_fp} MB"}
       - {name: batches_per_epoch, type: float, _: "Batches per epoch: ${jube_pat_int}"}
       - {name: actual_steps_per_execution, type: int, _: "Steps per execution: ${jube_pat_int}"}
       - {name: actual_replicas, type: int, _: "Num replicas: ${jube_pat_int}"}
@@ -305,13 +317,15 @@ result:
           - {title: "JobID", _: jobid}
           - {title: "Host", _: hostname}
           - {title: "Hardware", _: hardware_name}
-          - {title: "Steps per exectution", _: actual_steps_per_execution}
+          - {title: "Steps per execution", _: actual_steps_per_execution}
+          - {title: "Gradient accumulation steps", _: gradient_accumulation_steps}
           - {title: "Replica", _: actual_replicas}
           - {title: "Processes", _: n_procs}
           - {title: "Dataset size [MB]", _: dataset_size_mb}
           - {title: "Samples per batch", _: batch_size}
           - {title: "Patch size", _: patch_size}
           - {title: "Batch size [MB]", _: batch_size_mb}
+          - {title: "Effective batch size [MB]", _: effective_batch_size_mb}
           - {title: "Batches per epoch", _: batches_per_epoch}
           - {title: "Epochs", _: nepochs}
           - {title: "Model", _: model}

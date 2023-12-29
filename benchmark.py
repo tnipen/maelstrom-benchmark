@@ -30,17 +30,8 @@ def main():
 
     # AP1 specific arguments
     parser.add_argument('-p', default=128, type=int, help='Patch size', dest="patch_size")
+    parser.add_argument('-g', default=10, type=int, help='Gradient accumluation steps (IPU only)', dest='gradient_accumulation_steps')
     args = parser.parse_args()
-    
-    # strategy 1
-    #   batch size (samples/batch)
-    #   batches/epoch
-    #   patch size
-    # strategy 2
-    #   patch size
-    #   dataset size
-    #   batch size
-    print(args.hardware_name)
     
     if args.hardware_name=='MI250_GPU':
         sys.path.append('/opt/rocm/libexec/rocm_smi')
@@ -109,6 +100,8 @@ def main():
 
             steps_per_epoch = int(args.dataset_size / 4 / app.batch_bytes / args.batch_size / num_processes)
 
+            steps_per_epoch = int(steps_per_epoch // (args.gradient_accumulation_steps * args.replica) * args.gradient_accumulation_steps * args.replica)
+
             # Adjust steps_per_execution so that it is a multiple of steps_per_execution * replicas
             if args.steps_per_execution is None:
                 steps_per_epoch = (steps_per_epoch // (args.replica)) * args.replica
@@ -118,7 +111,6 @@ def main():
                 if steps_per_execution * args.replica > steps_per_epoch:
                     steps_per_execution = steps_per_epoch // args.replica
                 steps_per_epoch = (steps_per_epoch // (steps_per_execution * args.replica)) * steps_per_execution * args.replica
-
             if main_process:
                 print("steps_per_epoch:", steps_per_epoch)
                 print("steps_per_execution:", steps_per_execution)
@@ -126,6 +118,7 @@ def main():
             num_batches=steps_per_epoch * args.epochs
             dataset = app.get_dataset(num_batches)
             dataset_size_mb = batch_size_mb * steps_per_epoch * num_processes
+            effective_batch_size_mb = batch_size_mb * num_processes * args.replica * args.gradient_accumulation_steps
 
             with strategy.scope():
 
@@ -138,11 +131,12 @@ def main():
                     loss,loss_weights = app.get_loss_function()
 
                 if args.hardware == "ipu":
+                    # optimizer = ipu.optimizers.CrossReplicaGradientAccumulationOptimizerV2(optimizer, 10)
                     if args.app_name != 'ap3' :
                         model.compile(optimizer=optimizer, loss=loss, steps_per_execution=steps_per_execution)
                     else:
                         model.compile(optimizer=optimizer, loss=loss, loss_weights=loss_weights,steps_per_execution=steps_per_execution)
-                    # model.set_gradient_accumulation_options(gradient_accumulation_steps_per_replica=10)
+                    model.set_gradient_accumulation_options(gradient_accumulation_steps_per_replica=args.gradient_accumulation_steps)
                 else:
                     if args.app_name != 'ap3' :
                         model.compile(optimizer=optimizer, loss=loss)
@@ -184,6 +178,7 @@ def main():
                 print(f"   Num replicas: {args.replica}")
                 print(f"   Batches per epoch: {steps_per_epoch}")
                 print(f"   Batch size: {batch_size_mb:.2f} MB")
+                print(f"   Effective batch size: {effective_batch_size_mb:.2f} MB")
                 print(f"   Num trainable weights: {num_trainable_weights}")
                 print(f"   Num processes: {num_processes}")
                 print("Training performance:")
