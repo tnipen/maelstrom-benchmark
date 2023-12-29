@@ -21,7 +21,7 @@ def main():
     parser.add_argument('-d', type=float, help='Dataset size in bytes', dest="dataset_size", required=True)
     parser.add_argument('-b', default=1, type=int, help="Batch size (number of samples per batch)", dest="batch_size")
     parser.add_argument('-w', help='What hardware to run this on', dest='hardware', choices=["gpu", "cpu", "ipu"], required=True)
-    parser.add_argument('-wn', help='Hardware name', dest='hardware_name', choices=["A100_GPU", "GC200_IPU", "H100_GPU","MI250_GPU"], required=True)
+    parser.add_argument('-wn', help='Hardware name', dest='hardware_name', choices=["A100_GPU", "V100_GPU", "GC200_IPU", "H100_GPU","MI250_GPU"], required=True)
     parser.add_argument('--debug', help='Turn on debugging information', action="store_true")
 
     # IPU specific arguments
