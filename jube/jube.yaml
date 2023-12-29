@@ -154,7 +154,7 @@ parameterset:
         tag: "jwb|jwc|amd|intel|jrc"
         separator: |
         _: 
-          source $jube_benchmark_home/../virtual_envs/venv_$systemname/bin/activate;
+          source $jube_benchmark_home/../virtual_envs/venv_$systemname/bin/activate
       - name: modules
         # ipu doesn't need any modules loaded, because it runs in the container
         tag: "jwb|jwc|amd|intel|jrc"
@@ -195,6 +195,7 @@ parameterset:
         tag: "jwb|jwc|amd|intel|jrc"
         _:
           $modules;
+          $activate_env;
 
       - {name: n_cpu, _: 48, tag: jwb}
       - {name: n_cpu, _: 48, tag: jrc}
@@ -373,6 +374,4 @@ step:
       done_file: $ready_file
       error_file: $error_file
       _: 
-        $modules;
-        $activate_env
         $submit $submit_script
