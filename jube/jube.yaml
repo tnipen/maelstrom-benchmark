@@ -343,8 +343,8 @@ result:
             # - {title: "max epoch time [s]", _: epoch_time_max}
           - {title: "Max cpu mem", _: cpu_mem}
           - {title: "Max gpu mem", _: gpu_mem}
-          - {title: "Integrated Total Energy [J]", _: total_integrated_energy}
-          - {title: "Counter Total Energy [J]", _: total_counter_energy}
+          - {title: "Integrated Total Energy [Wh]", _: total_integrated_energy}
+          - {title: "Counter Total Energy [Wh]", _: total_counter_energy}
           - {title: "Max Power [W]", _: max_power}
 
 step:
