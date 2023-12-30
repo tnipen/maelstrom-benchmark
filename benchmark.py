@@ -36,13 +36,13 @@ def main():
     if args.hardware_name=='MI250_GPU':
         sys.path.append('/opt/rocm/libexec/rocm_smi')
 
-    
+    # NOTE: Putting the energy_profiler into a callback running in the main process caused all sorts of issues
+    # for IPU. Therefore, run it on all ranks, eventhough this is not ideal. For IPU, the python job never
+    # gives back control to slurm.
     energy_profiler = energy_utils.get_energy_profiler(args.hardware_name)
-    
-    with energy_profiler() as measured_scope:
-        print('Measuring Energy during main() call')
-        try:
 
+    with energy_profiler() as measured_scope:
+        try:
             main_process = True
             num_processes = 1
             with_horovod = check_horovod()    
@@ -81,7 +81,7 @@ def main():
                 set_gpu_memory_growth()
                 if with_horovod:
                     hvd.init()
-                    print(hvd.rank(), hvd.size())
+                    print(hvd.local_rank(), hvd.rank(), hvd.size())
                     if len(gpus) == 0:
                         raise Exception("No GPUs available")
                     if len(gpus) > 1:
@@ -153,10 +153,9 @@ def main():
                     timing_callback = TimingCallback()
                     callbacks += [timing_callback]
 
-
                 # Train the model
                 start_time = time.time()
-                history = model.fit(dataset, epochs=args.epochs, steps_per_epoch=steps_per_epoch, callbacks=callbacks, verbose=1)
+                history = model.fit(dataset, epochs=args.epochs, steps_per_epoch=steps_per_epoch, callbacks=callbacks, verbose=main_process)
                 training_time = time.time() - start_time
 
 
@@ -201,33 +200,42 @@ def main():
             import traceback
             print(f"Errors occured during training: {exc}")
             print(f"Traceback: {traceback.format_exc()}")
-                
+                    
 
-    f = open(f"EnergyFile-NVDA-integrated.txt", 'a')
-    #print("Energy data:")
-    measured_scope.df.to_csv("EnergyFile-NVDA.csv") 
-    print("Energy-per-GPU-list:")
-    max_power=measured_scope.df.loc[:,(measured_scope.df.columns != 'timestamps')].max().max()
-    print(f"Max Power: {max_power:.2f} W")
-    
-    if args.hardware_name=='MI250_GPU':
-        energy_int,energy_cnt = measured_scope.energy()
-        print(f"Integrated Total Energy: {np.sum(energy_int):.2f} J")
-        print(f"Counter Total Energy: {np.sum(energy_cnt):.2f} J")
+    if main_process:
+        # Remove data from the first epoch
+        start_time_second_epoch = timing_callback.start_times[1]
+        measured_scope.df = measured_scope.df[measured_scope.df["timestamps"] >= start_time_second_epoch]
+
+        f = open(f"EnergyFile-NVDA-integrated.txt", 'a')
+        measured_scope.df.to_csv("EnergyFile-NVDA.csv")
+
+        print("Energy-per-GPU-list:")
+        max_power=measured_scope.df.loc[:,(measured_scope.df.columns != 'timestamps')].max().max()
+        print(f"Max Power: {max_power:.2f} W")
         
-        f.write(f"integrated: {energy_int}") 
-        f.write(f"from counter: {energy_cnt}")
-        f.close()
-    elif args.hardware_name in ['A100_GPU','H100_GPU','GC200_IPU']:
-        energy_int = measured_scope.energy() 
-        print(f"Integrated Total Energy: {np.sum(energy_int):.2f} J")
-        f.write(f"integrated: {energy_int}") 
-        f.close()
+        max_agg_power=measured_scope.df.loc[:,(measured_scope.df.columns != 'timestamps')].sum(axis=1).max()
+        print(f"Max Aggregate Power: {max_agg_power:.2f} W")
         
+        mean_agg_power=measured_scope.df.loc[:,(measured_scope.df.columns != 'timestamps')].sum(axis=1).mean()
+        print(f"Mean Aggregate Power: {mean_agg_power:.2f} W")
+        
+        if args.hardware_name=='MI250_GPU':
+            energy_int,energy_cnt = measured_scope.energy()
+            print(f"Integrated Total Energy: {np.sum(energy_int):.2f} Wh")
+            print(f"Counter Total Energy: {np.sum(energy_cnt):.2f} Wh")
+            
+            f.write(f"integrated: {energy_int}") 
+            f.write(f"from counter: {energy_cnt}")
+            f.close()
+        elif args.hardware_name in ['A100_GPU','V100_GPU','H100_GPU','GC200_IPU']:
+            energy_int = measured_scope.energy()
+            print(f"Integrated Total Energy: {np.sum(energy_int):.2f} Wh")
+            f.write(f"integrated: {energy_int}") 
+            f.close()
+
+    print("FINISHED")
         
         
 if __name__ == "__main__":
-    
-
-    
     main()
