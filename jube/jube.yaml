@@ -219,7 +219,8 @@ parameterset:
       - {name: n_cpu, _: 40, tag: jwc}
       - {name: n_cpu, _: 48, tag: ipu}
       - {name: n_cpu, _: 72, tag: h100}
-      - {name: n_cpu, _: 96, tag: mi250x}
+        # Don't use 96 for mi250x, this causes communication errors
+      - {name: n_cpu, _: 48, tag: mi250x}
       - name: SRUN_CPUS_PER_TASK
         export: true
         _: ${SLURM_CPUS_PER_TASK}
