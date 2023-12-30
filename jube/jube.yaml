@@ -30,6 +30,8 @@ parameterset:
       - name: program
         tag: "mi250x"
         type: string
+        # This doesn't work. It makes each MPI task think there is only one task
+        # _: --mpi=pspmix env PMIX_SECURITY_MODE=native apptainer run $jube_benchmark_home/../mi250x.sif -- python -u $jube_benchmark_home/../benchmark.py
         _: --mpi=pmi2 apptainer run $jube_benchmark_home/../mi250x.sif -- python -u $jube_benchmark_home/../benchmark.py
       - name: hardware_name
         type: string
@@ -77,18 +79,31 @@ parameterset:
         _: cpu
       - name: experiment
         type: int
-        _: 0 # ,1,2
+        _: 0,1,2
       - name: nepochs
         type: int
-        _: 4
+        _: 11
         # - name: batches_per_epoch
         # type: int
         # _: 80, 160, 320, 640
       - name: batch_size
         type: int
-        _: 1
-        # _: 1,2,4,8,16,32,64,128,256
-        # _: 2
+        tag: "jwc"
+        _: 64,32,16,8,4,2,1
+      - name: batch_size
+        type: int
+        tag: jwb|mi250x
+        _: 256,128,64,32,16,8,4,2,1
+        # _: 1
+      - name: batch_size
+        type: int
+        tag: h100
+        _: 512,256,128,64,32,16,8,4,2,1
+        # _: 512
+      - name: batch_size
+        type: int
+        tag: "ipu"
+        _: 2
       - name: gradient_accumulation_steps
         type: int
         tag: "!ipu"
@@ -96,8 +111,9 @@ parameterset:
       - name: gradient_accumulation_steps
         type: int
         tag: ipu
-        # _: 2,4,8,16,32,64
-        _: 1
+        _: 1,2,4,8,16,32,64,128,256
+        # _: 1,2,4,8,16
+        # _: 1
       - name: replica
         tag: ipu
         type: int
@@ -115,13 +131,12 @@ parameterset:
         type: int
         _: 4000
       - name: dataset_size
-        tag: "!intel+!amd+!jwc"
+        tag: "!intel+!amd"
         type: int
-        _: 34359738368
-      - name: dataset_size
-        tag: "jwc"
-        type: int
-        _:   17179869184
+        # _: 34359738368
+        # This will make the batches break evenly into 8192
+        _: 36507222016
+        # _: 137438953472
       - name: dataset_size
         tag: "jrc"
         type: int
@@ -204,15 +219,22 @@ parameterset:
       - {name: n_cpu, _: 40, tag: jwc}
       - {name: n_cpu, _: 48, tag: ipu}
       - {name: n_cpu, _: 72, tag: h100}
-      - {name: n_cpu, _: 48, tag: mi250x}
+      - {name: n_cpu, _: 96, tag: mi250x}
       - name: SRUN_CPUS_PER_TASK
         export: true
         _: ${SLURM_CPUS_PER_TASK}
+      - name: TF_POPLAR_FLAGS
+        tag: ipu
+        export: true
+        _: --executable_cache_path=$jube_benchmark_home/ipu_cache/
       - name: nodes
         _: 1
       - name: n_procs
-        tag: "!ipu"
-        _: 4
+        tag: "!ipu+!mi250x"
+        _: 1
+      - name: n_procs
+        tag: mi250x
+        _: 8
       - name: n_procs
         tag: ipu
         _: 1
@@ -225,7 +247,11 @@ parameterset:
         type: int
         _:  $n_cpu // $n_procs
       - name: timelimit
-        _: "00:60:00"
+        tag: "!ipu"
+        _: "00:15:00"
+      - name: timelimit
+        tag: ipu
+        _: "00:07:00"
       - name: account
         tag: jwb|jwc|amd|intel
         _: deepacf
@@ -237,7 +263,7 @@ parameterset:
         _: exalab
       - name: queue
         tag: jwb|amd
-        _: booster
+        _: develbooster
       - name: queue
         tag: jwc
         _: develgpus
@@ -287,9 +313,11 @@ patternset:
       - {name: cpu_mem, type: float, _: "CPU memory:.*peak: $jube_pat_fp GB"}
       - {name: gpu_mem, type: float, _: "GPU memory:.*peak: $jube_pat_fp GB"}
       - {name: gpu_mem, type: float, _: "GPU memory:.*peak: $jube_pat_fp GB"}
-      - {name: total_integrated_energy, type: float, _: "Integrated Total Energy: ${jube_pat_fp} J"}
-      - {name: total_counter_energy, type: float, _: "Counter Total Energy: ${jube_pat_fp} J"}
+      - {name: total_integrated_energy, type: float, _: "Integrated Total Energy: ${jube_pat_fp} Wh"}
+      - {name: total_counter_energy, type: float, _: "Counter Total Energy: ${jube_pat_fp} Wh"}
       - {name: max_power, type: float, _: "Max Power: ${jube_pat_fp} W"}
+      - {name: max_agg_power, type: float, _: "Max Aggregate Power: ${jube_pat_fp} W"}
+      - {name: mean_agg_power, type: float, _: "Mean Aggregate Power: ${jube_pat_fp} W"}
       - {name: performance, type: float, _: "Average performance:\\s+$jube_pat_fp MB/s"}
       - {name: performance_nonfirst_epoch, type: float, _: "Performance non-first epoch:\\s+$jube_pat_fp MB/s"}
       - {name: performance_min_epoch, type: float, _: "Performance min epoch:\\s+$jube_pat_fp MB/s"}
@@ -346,6 +374,8 @@ result:
           - {title: "Integrated Total Energy [Wh]", _: total_integrated_energy}
           - {title: "Counter Total Energy [Wh]", _: total_counter_energy}
           - {title: "Max Power [W]", _: max_power}
+          - {title: "Max Aggregate Power [W]", _: max_agg_power}
+          - {title: "Mean Aggregate Power [W]", _: mean_agg_power}
 
 step:
   - name: setup_venv

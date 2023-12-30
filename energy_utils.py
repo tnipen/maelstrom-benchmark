@@ -6,26 +6,27 @@ import sys
 
 def get_energy_profiler(hardware_name):
     if hardware_name == "GC200_IPU":
-        return GetIPUPower
+        return GetIPUPower()
     elif hardware_name in ['A100_GPU','V100_GPU', 'H100_GPU']:
-        return GetNVIDIAPower
+        return GetNVIDIAPower()
     elif hardware_name == 'MI250_GPU':
-        return GetARMPower
+        return GetARMPower()
     else:
         raise NotImplementedError(f"Unknown hardware_name {hardware_name}")
 
 #NVIDIA GPUS
 class GetNVIDIAPower(object):
     
-    def __enter__(self):
+    def __init__(self):
+        self.interval = 100 #ms
+
+    # Call this to start the recording of energy measurements
+    def start(self):
         self.end_event = Event()
         self.power_queue = Queue()
-        
-        interval = 100 #ms
         self.smip = Process(target=self._power_loop,
-                args=(self.power_queue, self.end_event, interval))
+                args=(self.power_queue, self.end_event, self.interval))
         self.smip.start()
-        return self
     
     def _power_loop(self,queue, event, interval):
         import pynvml as pynvml
@@ -49,7 +50,7 @@ class GetNVIDIAPower(object):
             last_timestamp = timestamp
         queue.put(power_value_dict)
 
-    def __exit__(self, type, value, traceback):
+    def stop(self):
         self.end_event.set()
         power_value_dict = self.power_queue.get()
         self.smip.join()
@@ -68,21 +69,28 @@ class GetNVIDIAPower(object):
 
 
 class GetARMPower(object):
-    def __enter__(self):
+    def __init__(self):
+        print("INITIALIZING ARM")
+        self.interval = 100 #ms
+
+    def start(self):
+        print("START")
         self.end_event = Event()
         self.power_queue = Queue()
         
-        interval = 100 #ms
         self.smip = Process(target=self._power_loop,
-                args=(self.power_queue, self.end_event, interval))
+                args=(self.power_queue, self.end_event, self.interval))
+        print("START QUEUE")
         self.smip.start()
-        return self
     
     def _power_loop(self,queue, event, interval):
+        print("power loop 0")
         import rsmiBindings as rmsi
         ret = rmsi.rocmsmi.rsmi_init(0)
         if rmsi.rsmi_status_t.RSMI_STATUS_SUCCESS != ret:
             raise RuntimeError("Failed initializing rocm_smi library")
+
+        print("power loop 1")
         device_count = rmsi.c_uint32(0)
         ret = rmsi.rocmsmi.rsmi_num_monitor_devices(rmsi.byref(device_count))
         if rmsi.rsmi_status_t.RSMI_STATUS_SUCCESS != ret:
@@ -91,6 +99,7 @@ class GetARMPower(object):
         power_value_dict = {
             id : [] for id in device_list
         }
+        print("power loop 2")
         power_value_dict['timestamps'] = []
         last_timestamp = time.time()
         start_energy_list = []
@@ -136,39 +145,38 @@ class GetARMPower(object):
         queue.put(power_value_dict)
         queue.put(energy_list)
 
-    
-    def __exit__(self, type, value, traceback):
+    def stop(self):
         self.end_event.set()
         power_value_dict = self.power_queue.get()
         self.energy_list_counter = self.power_queue.get()
         self.smip.join()
+        print("STOP QUEUE")
 
         self.df = pd.DataFrame(power_value_dict)
+
     def energy(self):
         import numpy as np
         _energy = []
         energy_df = self.df.loc[:,self.df.columns != 'timestamps'].astype(float).multiply(self.df["timestamps"].diff(),axis="index")/3600
         _energy = energy_df[1:].sum(axis=0).values.tolist()
         return _energy,self.energy_list_counter
-
-    
-    
-    
     
     
 #IPUS
 
 class GetIPUPower(object):   
     
-    def __enter__(self):
+    def __init__(self):
+        self.interval = 100 #ms
+
+    def start(self):
         self.end_event = Event()
         self.power_queue = Queue()
         
-        interval = 100 #ms
         self.smip = Process(target=self._power_loop,
-                args=(self.power_queue, self.end_event, interval))
+                args=(self.power_queue, self.end_event, self.interval))
+
         self.smip.start()
-        return self
 
 
     def pow_to_float(self,pow):
@@ -207,10 +215,14 @@ class GetIPUPower(object):
             last_timestamp = timestamp
         queue.put(power_value_dict)
 
-    def __exit__(self, type, value, traceback):
+    def stop(self):
+        print("STOPPING")
         self.end_event.set()
+        print(1)
         power_value_dict = self.power_queue.get()
+        print(2)
         self.smip.join()
+        print(3)
 
         self.df = pd.DataFrame(power_value_dict)
         
@@ -220,8 +232,3 @@ class GetIPUPower(object):
         energy_df = self.df.loc[:,self.df.columns != 'timestamps'].astype(float).multiply(self.df["timestamps"].diff(),axis="index")/3600
         _energy = energy_df[1:].sum(axis=0).values.tolist()
         return _energy
-
-
-    
-
-
