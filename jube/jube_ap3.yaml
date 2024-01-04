@@ -1,8 +1,8 @@
 name:    benchmark
-outpath: results
+outpath: results_ap3
 comment: MAELSTROM GPU/CPU/IPU benchmark jube script
 # Tags:
-# - ipu (IPUS on dc-ipu). Must be scheduled from JURECA. Currently, WGAN is not supported on IPUs.
+# - ipu (IPUS on dc-ipu). Must be scheduled from JURECA.
 # - jwb (GPUs on JUWELS booster)
 # - jwc (GPUs on JUWELS cluster)
 # - jwr (A100 GPUs on JURECA cluster)
@@ -84,17 +84,12 @@ parameterset:
         # type: int
         # _: 80, 160, 320, 640
       - name: batch_size
-        tag: ipu
         type: int
-        _: 2
-      - name: batch_size
-        tag: "!ipu"
-        type: int
-        _: 32
+        _: 256
       - name: replica
         tag: ipu
         type: int
-        _: 16
+        _: 1,2,4
       - name: replica
         tag: "!ipu"
         type: int
@@ -102,31 +97,34 @@ parameterset:
       - name: steps_per_execution
         tag: ipu
         type: int
-        _: 755
+        _: 4000
       - name: steps_per_execution
-        # epoch is defined as number of batches for the WGAN's generator to see the whole dataset once
         tag: "!ipu"
         type: int
-        _: 755
+        _: 4000
       - name: dataset_size
-        # corresponds to 24171 samples
-        tag: "!intel+!amd"
+        tag: "!intel+!amd+!jwc"
         type: int
-        _:  16706995200 
+        _: 4294967296
       - name: dataset_size
-        # Use a smaller dataset for CPU benchmarks, otherwise it takes forever (corresponds to 2000 samples)
+        tag: "jwc"
+        type: int
+        _:   4294967296
+      - name: dataset_size
+        tag: "jrc"
+        type: int
+        _: 4294967296
+      - name: dataset_size
+        # Use a smaller dataset for CPU benchmarks, otherwise it takes forever
         tag: intel|amd
         type: int
-        _: 1382400000
-      - name: patch_size
-        type: string
-        _: "96 120"
+        _:   4294967296
       - name: app
         type: string
-        _: ap5
+        _: ap3
       - name: program_args
         type: string
-        _: "-a ${app} -b ${batch_size} -e ${nepochs} -d ${dataset_size} -ps ${patch_size} -w ${hardware} -s ${steps_per_execution} -r ${replica}"
+        _: "-a ${app} -b ${batch_size} -e ${nepochs} -d ${dataset_size} -w ${hardware} -wn ${hardware_name} -s ${steps_per_execution} -r ${replica}"
   - name: globalParameter
     parameter:
       - name: create_env
@@ -172,7 +170,7 @@ parameterset:
       - name: systemname
         tag: ipu|h100|mi250x
         _: jrc
-    - name: executeset
+  - name: executeset
     init_with: platform.xml
   - name: systemParameter
     init_with: platform.xml

@@ -1,0 +1,10 @@
+Bootstrap: localimage
+From: tensorflow_rocm5.7-tf2.13-dev.sif
+
+%post
+    apt -y install mpich
+    apt -y install libpmi2-0-dev
+    pip install argparse numpy horovod psutil
+    pip install climetlab==0.11.9
+    pip install climetlab-maelstrom-radiation==0.7.4
+# -r requirements.txt # psutil xarray

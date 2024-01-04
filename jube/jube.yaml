@@ -1,27 +1,40 @@
 name:    benchmark
-outpath: results
+outpath: results_ap1
 comment: MAELSTROM GPU/CPU/IPU benchmark jube script
 # Tags:
 # - ipu (IPUS on dc-ipu). Must be scheduled from JURECA.
 # - jwb (GPUs on JUWELS booster)
 # - jwc (GPUs on JUWELS cluster)
+# - jwr (A100 GPUs on JURECA cluster)
 # - amd (CPUs on JUWELS booster)
 # - intel (CPUs on JUWELS cluster)
+# - h100 (GPUs on JURECA)
+# - mi250x (GPUs on JURECA)
 
 parameterset:
   - name: appParameters
     parameter:
       - name: program
-        tag: "!ipu"
+        tag: jwb|jwc|jrc|amd|intel
         type: string
         _: python -u $jube_benchmark_home/../benchmark.py
       - name: program
         tag: "ipu"
         type: string
-        _: apptainer run $jube_benchmark_home/../benchmark.sif -- python -u $jube_benchmark_home/../benchmark.py
+        _: apptainer run $jube_benchmark_home/../ipu.sif -- python -u $jube_benchmark_home/../benchmark.py
+      - name: program
+        tag: "h100"
+        type: string
+        _: -n 2 --mpi=pspmix env PMIX_SECURITY_MODE=native apptainer run --nv $jube_benchmark_home/../h100.sif -- python -u $jube_benchmark_home/../benchmark.py        
+        #_: --mpi=pmi2 apptainer run --nv $jube_benchmark_home/../h100.sif -- python -u $jube_benchmark_home/../benchmark.py
+      - name: program
+        tag: "mi250x"
+        type: string
+        type: string
+        _: --mpi=pmi2 apptainer run $jube_benchmark_home/../mi250x.sif -- python -u $jube_benchmark_home/../benchmark.py
       - name: hardware_name
         type: string
-        tag: jwb
+        tag: jwb|jrc
         _: A100_GPU
       - name: hardware_name
         type: string
@@ -39,9 +52,17 @@ parameterset:
         type: string
         tag: amd
         _: AMD_EPYC_2.8GHz
+      - name: hardware_name
+        type: string
+        tag: h100
+        _: H100_GPU
+      - name: hardware_name
+        type: string
+        tag: mi250x
+        _: MI250_GPU
       - name: hardware
         type: string
-        tag: jwb|jwc
+        tag: jwb|jwc|jrc|h100|mi250x
         _: gpu
       - name: hardware
         type: string
@@ -66,11 +87,11 @@ parameterset:
         # _: 80, 160, 320, 640
       - name: batch_size
         type: int
-        _: 1
+        _: 2
       - name: replica
         tag: ipu
         type: int
-        _: 1 #, 2, 4
+        _: 1,2,4
       - name: replica
         tag: "!ipu"
         type: int
@@ -78,7 +99,7 @@ parameterset:
       - name: steps_per_execution
         tag: ipu
         type: int
-        _: 1 #, 2, 4
+        _: 4000
       - name: steps_per_execution
         tag: "!ipu"
         type: int
@@ -90,26 +111,43 @@ parameterset:
       - name: dataset_size
         tag: "jwc"
         type: int
-        _: 17179869184
+        _:   17179869184
+      - name: dataset_size
+        tag: "jrc"
+        type: int
+        _: 268435456
       - name: dataset_size
         # Use a smaller dataset for CPU benchmarks, otherwise it takes forever
         tag: intel|amd
         type: int
-        _: 1073741824
+        _:   1073741824
       - name: patch_size
         type: int
-        _: 512
+        _: 256
       - name: app
         type: string
         _: ap1
       - name: program_args
         type: string
-        _: "-a ${app} -b ${batch_size} -e ${nepochs} -d ${dataset_size} -p ${patch_size} -w ${hardware} -s ${steps_per_execution} -r ${replica}"
+        _: "-a ${app} -b ${batch_size} -e ${nepochs} -d ${dataset_size} -p ${patch_size} -w ${hardware} -wn ${hardware_name} -s ${steps_per_execution} -r ${replica}"
   - name: globalParameter
     parameter:
+      - name: create_env
+        # ipu doesn't need any env activated, because it runs in the container
+        tag: "jwb|jwc|amd|intel|jrc"
+        separator: |
+        _: 
+          cd $jube_benchmark_home/../env_setup/;
+          source ./create_env.sh venv_$systemname;
+      - name: activate_env
+        # ipu doesn't need any env activated, because it runs in the container
+        tag: "jwb|jwc|amd|intel|jrc"
+        separator: |
+        _: 
+          source $jube_benchmark_home/../virtual_envs/venv_$systemname/bin/activate;
       - name: modules
         # ipu doesn't need any modules loaded, because it runs in the container
-        tag: "jwb|jwc|amd|intel"
+        tag: "jwb|jwc|amd|intel|jrc"
         separator: |
         _: 
           module load Stages/2022 &&
@@ -118,10 +156,13 @@ parameterset:
           module load GCC/11.2.0 &&
           module load OpenMPI/4.1.2 &&
           module load mpi4py/3.1.3 &&
-          module load Horovod/0.24.3
+          module load Horovod/0.24.3  
       - name: systemname
         tag: jwc
         _: jwc
+      - name: systemname
+        tag: jrc
+        _: jrc
       - name: systemname
         tag: jwb
         _: jwb
@@ -132,7 +173,7 @@ parameterset:
         tag: intel
         _: jwb
       - name: systemname
-        tag: ipu
+        tag: ipu|h100|mi250x
         _: jrc
   - name: executeset
     init_with: platform.xml
@@ -141,16 +182,18 @@ parameterset:
     parameter:
       - name: preprocess
         mode: text
-        tag: "jwb|jwc|amd|intel"
+        tag: "jwb|jwc|amd|intel|jrc"
         _:
           $modules;
-          # source $jube_benchmark_home/.venv_${systemname}/bin/activate;
 
       - {name: n_cpu, _: 48, tag: jwb}
+      - {name: n_cpu, _: 48, tag: jrc}
       - {name: n_cpu, _: 48, tag: amd}
       - {name: n_cpu, _: 48, tag: intel}
       - {name: n_cpu, _: 40, tag: jwc}
       - {name: n_cpu, _: 48, tag: ipu}
+      - {name: n_cpu, _: 72, tag: h100}
+      - {name: n_cpu, _: 48, tag: mi250x}
       - name: SRUN_CPUS_PER_TASK
         export: true
         _: ${SLURM_CPUS_PER_TASK}
@@ -158,7 +201,7 @@ parameterset:
         _: 1
       - name: n_procs
         tag: "!ipu"
-        _: 4
+        _: 1
       - name: n_procs
         tag: ipu
         _: 1
@@ -171,27 +214,39 @@ parameterset:
         type: int
         _:  $n_cpu // $n_procs
       - name: timelimit
-        _: "00:15:00"
+        _: "00:60:00"
       - name: account
         tag: jwb|jwc|amd|intel
         _: deepacf
       - name: account
-        tag: ipu
+        tag: jrc
+        _: exalab
+      - name: account
+        tag: ipu|h100|mi250x|jrc
         _: exalab
       - name: queue
         tag: jwb|amd
         _: booster
       - name: queue
         tag: jwc
-        _: gpus
+        _: develgpus
       - name: queue
         tag: intel
         _: batch
       - name: queue
         tag: ipu
         _: dc-ipu
+      - name: queue
+        tag: h100
+        _: dc-h100
+      - name: queue
+        tag: mi250x
+        _: dc-mi200
+      - name: queue
+        tag: jrc
+        _: dc-gpu-devel
       - name: gres
-        tag: jwb|jwc
+        tag: jwb|jwc|jrc|h100
         _: gpu:$n_gpu
       - name: executable
         _: ${program}
@@ -219,6 +274,10 @@ patternset:
       - {name: epoch_time_max, type: float, _: "Max epoch time: $jube_pat_fp s"}
       - {name: cpu_mem, type: float, _: "CPU memory:.*peak: $jube_pat_fp GB"}
       - {name: gpu_mem, type: float, _: "GPU memory:.*peak: $jube_pat_fp GB"}
+      - {name: gpu_mem, type: float, _: "GPU memory:.*peak: $jube_pat_fp GB"}
+      - {name: total_integrated_energy, type: float, _: "Integrated Total Energy: ${jube_pat_fp} J"}
+      - {name: total_counter_energy, type: float, _: "Counter Total Energy: ${jube_pat_fp} J"}
+      - {name: max_power, type: float, _: "Max Power: ${jube_pat_fp} W"}
       - {name: performance, type: float, _: "Average performance:\\s+$jube_pat_fp MB/s"}
       - {name: performance_nonfirst_epoch, type: float, _: "Performance non-first epoch:\\s+$jube_pat_fp MB/s"}
       - {name: performance_min_epoch, type: float, _: "Performance min epoch:\\s+$jube_pat_fp MB/s"}
@@ -270,18 +329,20 @@ result:
             # - {title: "max epoch time [s]", _: epoch_time_max}
           - {title: "Max cpu mem", _: cpu_mem}
           - {title: "Max gpu mem", _: gpu_mem}
+          - {title: "Integrated Total Energy [J]", _: total_integrated_energy}
+          - {title: "Counter Total Energy [J]", _: total_counter_energy}
+          - {title: "Max Power [W]", _: max_power}
 
 step:
   - name: setup_venv
-    active: false
+    active: true
     use:
       - globalParameter
       - systemParameter
     do:
       _:
         $modules;
-        cd $jube_benchmark_home/../setup_env/ &&
-        source ./setup_${systemname}.sh
+        $create_env;
 
   # Traning experiments
   - name: train
@@ -300,4 +361,5 @@ step:
       error_file: $error_file
       _: 
         $modules;
+        $activate_env
         $submit $submit_script
