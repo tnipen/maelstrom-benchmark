@@ -387,6 +387,12 @@ class WGAN(keras.Model):
         self.recon_weight = hparams_dict.get("recon_weight", 1000.)
         self.trainable_weights_wgan = self.generator.trainable_weights + self.critic.trainable_weights
 
+    # ML: Overwriting the call-method reveals the real error with the Keras extensions for IPU, i.e. that overwriting train_step is not supported yet
+    #def call(self, inputs):
+    #    out = self.generator(inputs)
+    #
+    #   return out
+
     def compile(self, optimizer, loss, **kwargs):
         """
         Set the optimizer as well as the adversarial loss functions for the generator and critic.

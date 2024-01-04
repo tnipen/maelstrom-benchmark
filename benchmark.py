@@ -76,7 +76,10 @@ def main():
         # ipu_config.io_tiles.num_io_tiles = 128
         # ipu_config.io_tiles.place_ops_on_io_tiles = True
 
+        # ML: The following throws the real error, that is that overwriting train_step is not supported for Keras IPU extensions.
+        #strategy = ipu.ipu_strategy.IPUStrategy(enable_keras_extensions=False)
         strategy = ipu.ipu_strategy.IPUStrategy()
+
     else:
         gpus = tf.config.experimental.list_physical_devices("GPU")
 
@@ -117,6 +120,7 @@ def main():
         if steps_per_execution * args.replica > steps_per_epoch:
             steps_per_execution = steps_per_epoch // args.replica
         steps_per_epoch = (steps_per_epoch // (steps_per_execution * args.replica)) * steps_per_execution * args.replica
+
 
     if main_process:
         print("steps_per_epoch:", steps_per_epoch)
