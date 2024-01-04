@@ -101,12 +101,13 @@ def main():
     
     if args.app_name == "ap5":
         app = applications.get(args.app_name, args.patch_size_rect)
+        # AP5 is not supported on IPU
+        if args.hardware == "ipu":
+            raise ValueError("AP5 is not supported on IPU")
     else:
         app = applications.get(args.app_name, args.patch_size)
 
     # Settings
-    print(app.input_shape)
-    print(args.batch_size)
     batch_size_mb = 4 * np.product(app.input_shape) * args.batch_size / 1024 / 1024
 
     steps_per_epoch = int(args.dataset_size / 4 / np.product(app.input_shape) / args.batch_size / num_processes)
