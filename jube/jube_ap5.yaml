@@ -126,7 +126,7 @@ parameterset:
         _: ap5
       - name: program_args
         type: string
-        _: "-a ${app} -b ${batch_size} -e ${nepochs} -d ${dataset_size} -ps ${patch_size} -w ${hardware} -s ${steps_per_execution} -r ${replica}"
+        _: "-a ${app} -b ${batch_size} -e ${nepochs} -d ${dataset_size} -ps ${patch_size} -w ${hardware} -wn ${hardware_name} -s ${steps_per_execution} -r ${replica}"
   - name: globalParameter
     parameter:
       - name: create_env
@@ -172,7 +172,7 @@ parameterset:
       - name: systemname
         tag: ipu|h100|mi250x
         _: jrc
-    - name: executeset
+  - name: executeset
     init_with: platform.xml
   - name: systemParameter
     init_with: platform.xml
@@ -217,9 +217,9 @@ parameterset:
         _: deepacf
       - name: account
         tag: jrc
-        _: exalab
+        _: zam
       - name: account
-        tag: ipu|h100|mi250x|jrc
+        tag: ipu|h100|mi250x
         _: exalab
       - name: queue
         tag: jwb|amd
