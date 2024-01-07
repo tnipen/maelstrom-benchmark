@@ -293,14 +293,14 @@ class AP5(Application):
                         "critic": {"activation": "swish"}}
         self.ntargets_dyn = 1
         self.ntargets = self.ntargets_dyn +1 if self.hparams["generator"].get("z_branch", False) else self.ntargets_dyn    # +1 for z-output (cf. Sha et al. 2020)
-
-        # to be set in get_dataset
-        self.batch_size = None
+        
+        self.batch_size = args.batch_size
 
 
     def get_model(self):
-        assert self.batch_size is not None, "batch_size must be set before calling get_model, i.e. run get_dataset first."
-
+        """ 
+        Returns a WGAN model for AP5.
+        """
         self.hparams["batch_size"] = self.batch_size
 
         sha_unet = models.Sha_Unet(self.input_shape, self.hparams["generator"], self.ntargets, concat_out=True)
@@ -320,9 +320,7 @@ class AP5(Application):
 
     @property
     def batch_bytes(self):
-        if self.batch_size is None:
-            raise ValueError("batch_size must be set before calling batch_bytes, i.e. run get_dataset first.")  
-        return np.product([self.batch_size] + self.input_shape)
+        return np.product(self.input_shape)
     
     def get_optimizer(self, with_horovod=False):
         """
@@ -350,11 +348,10 @@ class AP5(Application):
 
         return loss_dict
     
-    def get_dataset(self, num_batches, batch_size):
+    def get_dataset(self, num_batches):
         """ Creates a tf dataset with specified sizes
         Args:
             num_batches (int): Number of batches in the dataset
-            batch_size (int): Number of samples in one batch
 
         Returns:
             tf.data.Dataset
@@ -370,8 +367,7 @@ class AP5(Application):
             return gen
         
         # effective batch-size during training of WGAN (with d_steps)
-        self.batch_size = batch_size
-        batch_size_eff = batch_size * self.hparams.get("d_steps", 5)
+        batch_size_eff = self.batch_size * self.hparams.get("d_steps", 5)
 
         output_signature = (tf.TensorSpec(shape=self.input_shape, dtype=tf.float32), tf.TensorSpec(shape=self.target_shape, dtype=tf.float32))
         dataset = tf.data.Dataset.from_generator(get_generator(self.input_shape, self.target_shape, int(num_batches * batch_size_eff)), output_signature=output_signature)
