@@ -317,6 +317,12 @@ class AP5(Application):
     def target_shape(self):
         shape = [*self.patch_size, self.ntargets]
         return shape
+
+    @property
+    def batch_bytes(self):
+        if self.batch_size is None:
+            raise ValueError("batch_size must be set before calling batch_bytes, i.e. run get_dataset first.")  
+        return np.product([self.batch_size] + self.input_shape)
     
     def get_optimizer(self, with_horovod=False):
         """
