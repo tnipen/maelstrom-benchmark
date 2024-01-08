@@ -158,14 +158,16 @@ def main():
 
                 callbacks = list()
                 callbacks = app.get_callbacks(callbacks)
+                verbose_main = 0
                 if main_process:
                     timing_callback = TimingCallback()
                     callbacks += [timing_callback]
+                    verbose_main = 2
 
 
                 # Train the model
                 start_time = time.time()
-                history = model.fit(dataset, epochs=args.epochs, steps_per_epoch=steps_per_epoch, callbacks=callbacks, verbose=1)
+                history = model.fit(dataset, epochs=args.epochs, steps_per_epoch=steps_per_epoch, callbacks=callbacks, verbose=verbose_main)
                 training_time = time.time() - start_time
 
 
