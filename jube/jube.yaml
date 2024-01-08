@@ -15,7 +15,7 @@ parameterset:
   - name: appParameters
     parameter:
       - name: program
-        tag: jwb|jwc|jrc|amd|intel
+        tag: jwb|jwc|jrc|amd|intel|e4gh200|e4a2
         type: string
         _: python -u $jube_benchmark_home/../benchmark.py
       - name: program
@@ -33,6 +33,11 @@ parameterset:
         # This doesn't work. It makes each MPI task think there is only one task
         # _: --mpi=pspmix env PMIX_SECURITY_MODE=native apptainer run $jube_benchmark_home/../mi250x.sif -- python -u $jube_benchmark_home/../benchmark.py
         _: --mpi=pmi2 apptainer run $jube_benchmark_home/../mi250x.sif -- python -u $jube_benchmark_home/../benchmark.py
+      - name: program
+        tag: "e4gh200"
+        type: string
+        # Use -v, not --mount, since the latter requires commas, which I can't seem to be able to escape in JUBE
+        _: "docker run -v $jube_benchmark_home/../:/code --gpus all --shm-size=1g --ulimit memlock=-1 --rm  ap1_maelstrom python -u /code/benchmark.py"
       - name: hardware_name
         type: string
         tag: jwb|jrc
@@ -63,8 +68,16 @@ parameterset:
         _: MI250_GPU
       - name: hardware
         type: string
-        tag: jwb|jwc|jrc|h100|mi250x
+        tag: jwb|jwc|jrc|h100|mi250x|e4gh200|e4a2
         _: gpu
+      - name: hardware_name
+        type: string
+        tag: e4gh200
+        _: E4-GH200
+      - name: hardware_name
+        type: string
+        tag: e4a2
+        _: E4-A2
       - name: hardware
         type: string
         tag: ipu
@@ -79,13 +92,18 @@ parameterset:
         _: cpu
       - name: experiment
         type: int
-        _: 0,1,2
+        _: 0 # ,1,2
       - name: nepochs
         type: int
         _: 11
         # - name: batches_per_epoch
         # type: int
         # _: 80, 160, 320, 640
+      - name: batch_size
+        type: int
+        tag: e4a2
+        # _: 4,1,32,16,8,2,64
+        _: 128
       - name: batch_size
         type: int
         tag: "jwc"
@@ -97,8 +115,9 @@ parameterset:
         # _: 1
       - name: batch_size
         type: int
-        tag: h100
-        _: 512,256,128,64,32,16,8,4,2,1
+        tag: h100|e4gh200
+        # _: 512,256,128,64,32,16,8,4,2,1
+        _: 256,128,64,32,16,8,4,2,1
         # _: 512
       - name: batch_size
         type: int
@@ -170,6 +189,12 @@ parameterset:
         separator: |
         _: 
           source $jube_benchmark_home/../virtual_envs/venv_$systemname/bin/activate
+      - name: activate_env
+        # ipu doesn't need any env activated, because it runs in the container
+        tag: "e4a2"
+        separator: |
+        _: 
+          source $jube_benchmark_home/../virtual_envs/venv_$systemname/bin/activate
       - name: modules
         # ipu doesn't need any modules loaded, because it runs in the container
         tag: "jwb|jwc|amd|intel|jrc"
@@ -182,6 +207,21 @@ parameterset:
           module load OpenMPI/4.1.2 &&
           module load mpi4py/3.1.3 &&
           module load Horovod/0.24.3  
+      - name: modules
+        tag: e4a2
+        separator: |
+        _:
+          module load slurm &&
+          module load nvidia/cuda-11.7 &&
+          module load python/python-3.9.16
+      - name: modules
+        tag: e4gh200
+        separator: |
+        _:
+          module load slurm &&
+          module load nvidia/cuda-12.3 &&
+          module load gcc-8.5.0/miniconda-23.10.0-1_aarch64 &&
+          eval "$(conda shell.bash hook)"
       - name: systemname
         tag: jwc
         _: jwc
@@ -200,6 +240,12 @@ parameterset:
       - name: systemname
         tag: ipu|h100|mi250x
         _: jrc
+      - name: systemname
+        tag: e4gh200
+        _: e4arm
+      - name: systemname
+        tag: e4a2
+        _: e4intel
   - name: executeset
     init_with: platform.xml
   - name: systemParameter
@@ -207,7 +253,7 @@ parameterset:
     parameter:
       - name: preprocess
         mode: text
-        tag: "jwb|jwc|amd|intel|jrc"
+        tag: "jwb|jwc|amd|intel|jrc|e4gh200|e4a2"
         _:
           $modules;
           $activate_env;
@@ -221,6 +267,8 @@ parameterset:
       - {name: n_cpu, _: 72, tag: h100}
         # Don't use 96 for mi250x, this causes communication errors
       - {name: n_cpu, _: 48, tag: mi250x}
+      - {name: n_cpu, _: 32, tag: e4gh200}
+      - {name: n_cpu, _: 32, tag: e4a2}
       - name: SRUN_CPUS_PER_TASK
         export: true
         _: ${SLURM_CPUS_PER_TASK}
@@ -231,13 +279,13 @@ parameterset:
       - name: nodes
         _: 1
       - name: n_procs
-        tag: "!ipu+!mi250x"
-        _: 1
+        tag: "!ipu+!mi250x+!e4a2+!e4gh200"
+        _: 4
       - name: n_procs
         tag: mi250x
         _: 8
       - name: n_procs
-        tag: ipu
+        tag: ipu|e4a2|e4gh200
         _: 1
       - name: n_gpu
         _: $n_procs
@@ -248,11 +296,14 @@ parameterset:
         type: int
         _:  $n_cpu // $n_procs
       - name: timelimit
-        tag: "!ipu"
+        tag: "!ipu+!e4a2"
         _: "00:15:00"
       - name: timelimit
         tag: ipu
         _: "00:07:00"
+      - name: timelimit
+        tag: "e4a2"
+        _: "00:55:00"
       - name: account
         tag: jwb|jwc|amd|intel
         _: deepacf
@@ -262,6 +313,8 @@ parameterset:
       - name: account
         tag: ipu|h100|mi250x|jrc
         _: exalab
+      - name: account
+        tag: e4gh200|e4a2
       - name: queue
         tag: jwb|amd
         _: develbooster
@@ -283,9 +336,18 @@ parameterset:
       - name: queue
         tag: jrc
         _: dc-gpu-devel
+      - name: queue
+        tag: e4gh200
+        _: t-gpu-gh200
+      - name: queue
+        tag: e4a2
+        _: i-gpu-a2
       - name: gres
-        tag: jwb|jwc|jrc|h100
+        tag: jwb|jwc|jrc|h100|e4gh200|e4a2
         _: gpu:$n_gpu
+      - name: additional_job_config
+        tag: e4gh200|e4a2
+        _: "#SBATCH --mem=256Gb"
       - name: executable
         _: ${program}
       - name: args_exec
