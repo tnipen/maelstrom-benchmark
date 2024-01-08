@@ -102,17 +102,18 @@ parameterset:
       - name: steps_per_execution
         tag: ipu
         type: int
-        _: 755
+        _: 3020
       - name: steps_per_execution
         # epoch is defined as number of batches for the WGAN's generator to see the whole dataset once
+        # corresponds to number of batches with a batch size of 32 given the dataset size
         tag: "!ipu"
         type: int
-        _: 755
+        _: 3020
       - name: dataset_size
-        # corresponds to 24171 samples
+        # corresponds to 24171*4 samples
         tag: "!intel+!amd"
         type: int
-        _:  16706995200 
+        _:  66827980800 
       - name: dataset_size
         # Use a smaller dataset for CPU benchmarks, otherwise it takes forever (corresponds to 2000 samples)
         tag: intel|amd
