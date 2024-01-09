@@ -320,7 +320,7 @@ class AP5(Application):
 
     @property
     def batch_bytes(self):
-        return np.product(self.input_shape)
+        return np.prod(self.input_shape)
     
     def get_optimizer(self, with_horovod=False):
         """
