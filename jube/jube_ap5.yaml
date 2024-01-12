@@ -25,7 +25,7 @@ parameterset:
       - name: program
         tag: "h100"
         type: string
-        _: --mpi=pmi2 apptainer run --nv $jube_benchmark_home/../h100.sif -- python -u $jube_benchmark_home/../benchmark.py
+        _: --mpi=pspmix env PMIX_SECURITY_MODE=native apptainer run --nv $jube_benchmark_home/../h100.sif -- python -u $jube_benchmark_home/../benchmark.py
       - name: program
         tag: "mi250x"
         type: string
@@ -125,9 +125,6 @@ parameterset:
       - name: app
         type: string
         _: ap5
-      - name: experiment
-        type: int
-        _: 0,1,2
       - name: program_args
         type: string
         _: "-a ${app} -b ${batch_size} -e ${nepochs} -d ${dataset_size} -ps ${patch_size} -w ${hardware} -wn ${hardware_name} -s ${steps_per_execution} -r ${replica}"
@@ -201,13 +198,11 @@ parameterset:
       - name: nodes
         _: 1
       - name: n_procs
-        tag: "!ipu|!mi250x"
+        tag: "!mi250x"
+        type: int
         _: 1,2,4
       - name: n_procs
-        tag: ipu
-        _: 1
-      - name: n_procs
-        tag: mi250x
+        tag: "mi250x"
         _: 1,2,4,8
       - name: n_gpu
         _: $n_procs
@@ -216,7 +211,7 @@ parameterset:
       - name: threadspertask
         mode: python
         type: int
-        _:  $n_cpu // $n_procs
+        _:  ${n_cpu} // ${n_procs}
       - name: timelimit
         _: "00:60:00"
       - name: account
@@ -342,7 +337,6 @@ step:
     active: true
     use:
       - globalParameter
-      - systemParameter
     do:
       _:
         $modules;
