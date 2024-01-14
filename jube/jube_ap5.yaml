@@ -67,7 +67,7 @@ parameterset:
         _: MI250_GPU
       - name: hardware
         type: string
-        tag: jwb|jwc|jrc|h100|mi250x
+        tag: jwb|jwc|jrc|h100|mi250x|e4gh200
         _: gpu
       - name: hardware_name
         type: string
@@ -140,9 +140,6 @@ parameterset:
       - name: app
         type: string
         _: ap5
-      - name: experiment
-        type: int
-        _: 0,1,2
       - name: program_args
         type: string
         _: "-a ${app} -b ${batch_size} -e ${nepochs} -d ${dataset_size} -ps ${patch_size} -w ${hardware} -wn ${hardware_name} -s ${steps_per_execution} -r ${replica}"
@@ -254,7 +251,7 @@ parameterset:
       - name: threadspertask
         mode: python
         type: int
-        _:  $n_cpu // $n_procs
+        _:  ${n_cpu} // ${n_procs}
       - name: timelimit
         _: "00:60:00"
       - name: account
@@ -391,7 +388,6 @@ step:
     active: true
     use:
       - globalParameter
-      - systemParameter
     do:
       _:
         $modules;
