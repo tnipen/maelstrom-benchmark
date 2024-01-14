@@ -67,7 +67,7 @@ parameterset:
         _: MI250_GPU
       - name: hardware
         type: string
-        tag: jwb|jwc|jrc|h100|mi250x|e4gh200
+        tag: jwb|jwc|jrc|h100|mi250x|e4gh200|e4a2
         _: gpu
       - name: hardware_name
         type: string
@@ -236,7 +236,7 @@ parameterset:
       - name: nodes
         _: 1
       - name: n_procs
-        tag: "!ipu|!mi250x"
+        tag: "!ipu|!mi250x|!e4a2"
         _: 1,2,4
       - name: n_procs
         tag: ipu
@@ -244,6 +244,9 @@ parameterset:
       - name: n_procs
         tag: mi250x
         _: 1,2,4,8
+      - name: n_procs
+        tag: "e4a2"
+        _: 1,2
       - name: n_gpu
         _: $n_procs
       - name: taskspernode
