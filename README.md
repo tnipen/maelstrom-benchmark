@@ -11,7 +11,17 @@ make mi250x     # create container for MI250x
 ```
 
 ### Running the benchmarks with JUBE
-The JUBE file contains 4 tags:
+JUBE is made available via modules on JSC's and E4's HPC-cluster. <br>
+On JSC clusters, just run:
+```
+ml JUBE/2.6.1
+```
+On E4-clusters run:
+```
+module use /opt/share/users/testusr/modulefiles
+module load jube
+```
+The JUBE file contains 9 tags:
 - ipu. This must be scheduled from a JURECA login node.
 - jwb (using A100 GPUs). This must be scheduled from a JUWELS-booster login node.
 - amd (using AMD CPUs). This must be scheduled from a JUWELS-booster login node.
@@ -19,6 +29,9 @@ The JUBE file contains 4 tags:
 - intel (using Intel CPUs). This must be scheduled from a JUWELS-cluster login node.
 - h100. This must be scheduled from a JURECA login node.
 - mi250x. This must be scheduled from a JURECA login node.
+- e4a2. This must be scheduled from the E4 machines 
+- e4gh200. This must be scheduled from the E4 machines.
+
 
 To run JUBE, first edit jube/jube.yaml to set the settings for the benchmark. Then run JUBE like this:
 ```
