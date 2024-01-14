@@ -7,7 +7,7 @@ import sys
 def get_energy_profiler(hardware_name):
     if hardware_name == "GC200_IPU":
         return GetIPUPower
-    elif hardware_name in ['A100_GPU','H100_GPU']:
+    elif hardware_name in ['A100_GPU','H100_GPU', "E4-GH200", "E4-A2"]:
         return GetNVIDIAPower
     elif hardware_name == 'MI250_GPU':
         return GetARMPower
