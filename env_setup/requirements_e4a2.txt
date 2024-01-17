@@ -1,0 +1,4 @@
+tensorflow==2.9.0
+cmake
+argparse numpy==1.26.3 psutil horovod====0.28.1
+
