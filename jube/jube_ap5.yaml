@@ -105,7 +105,7 @@ parameterset:
       - name: batch_size
         tag: "!ipu"
         type: int
-        _: 32
+        _: 8,16,32,64,128,256 
       - name: replica
         tag: ipu
         type: int
@@ -236,10 +236,13 @@ parameterset:
       - name: nodes
         _: 1
       - name: n_procs
-        tag: "!ipu|!mi250x"
+        tag: "!ipu|!mi250x!e4a2"
         _: 1,2,4
       - name: n_procs
-        tag: ipu
+        tag: e4a2
+        _: 1,2 
+      - name: n_procs
+        tag: "ipu|e4gh200"
         _: 1
       - name: n_procs
         tag: mi250x
@@ -252,6 +255,9 @@ parameterset:
         mode: python
         type: int
         _:  ${n_cpu} // ${n_procs}
+      - name: extra-node-info
+        tag: e4a2
+        _: "2:1"
       - name: timelimit
         _: "00:60:00"
       - name: account
