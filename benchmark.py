@@ -170,12 +170,17 @@ def main():
                 history = model.fit(dataset, epochs=args.epochs, steps_per_epoch=steps_per_epoch, callbacks=callbacks, verbose=verbose_main)
                 training_time = time.time() - start_time
 
+            
 
             # Write out results
             if main_process:
                 times = timing_callback.get_epoch_times()
                 num_trainable_weights = int(np.sum([K.count_params(w) for w in model.trainable_weights]))
                 hostname = socket.gethostname().split('.')[0]
+                # Scale dataset size for WGAN in AP5 where the critic is trained d_steps times before the generator is trained.
+                # In this case, streaming the dataset once through the generator deines an epoch.
+                scale_ds = model.get("d_steps", 0) +1 
+
                 print("Benchmark stats:")
                 print(f"   Application: ", args.app_name)
                 print(f"   Hardware: ", args.hardware.upper())
@@ -193,7 +198,7 @@ def main():
                 print(f"   Num processes: {num_processes}")
                 print("Training performance:")
                 print(f"   Total training time: {training_time:.2f} s")
-                print(f"   Average performance: {dataset_size_mb / training_time * args.epochs:.2f} MB/s")
+                print(f"   Average performance: {dataset_size_mb / training_time * args.epochs * scale_ds:.2f} MB/s")
                 print(f"   First epoch time: {times[0]:.2f} s")
                 print(f"   Non-first epoch time: {np.mean(times[1:]):.2f} s")
                 print(f"   Performance non-first epoch: {dataset_size_mb / np.mean(times[1:]):.2f} MB/s")
