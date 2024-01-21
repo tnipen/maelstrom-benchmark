@@ -179,7 +179,7 @@ def main():
                 hostname = socket.gethostname().split('.')[0]
                 # Scale dataset size for WGAN in AP5 where the critic is trained d_steps times before the generator is trained.
                 # In this case, streaming the dataset once through the generator deines an epoch.
-                scale_ds = model.get("d_steps", 0) +1 
+                scale_ds = model.__dict__.get("d_steps", 0) +1 
 
                 print("Benchmark stats:")
                 print(f"   Application: ", args.app_name)
