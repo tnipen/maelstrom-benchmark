@@ -200,7 +200,7 @@ def main():
                 print(f"   Total training time: {training_time:.2f} s")
                 print(f"   Average performance: {dataset_size_mb / training_time * args.epochs * scale_ds:.2f} MB/s")
                 print(f"   First epoch time: {times[0]:.2f} s")
-                print(f"   Non-first epoch time: {np.mean(times[1:])*scale_ds:.2f} s")
+                print(f"   Non-first epoch time: {np.mean(times[1:]):.2f} s")
                 print(f"   Performance non-first epoch: {dataset_size_mb / np.mean(times[1:])*scale_ds:.2f} MB/s")
                 print(f"   Min epoch time: {np.min(times):.2f} s")
                 print(f"   Performance min epoch: {dataset_size_mb / np.min(times)*scale_ds:.2f} MB/s")
@@ -233,7 +233,7 @@ def main():
         f.write(f"integrated: {energy_int}") 
         f.write(f"from counter: {energy_cnt}")
         f.close()
-    elif args.hardware_name in ['A100_GPU','H100_GPU','GC200_IPU']:
+    elif args.hardware_name in ['A100_GPU','H100_GPU','GC200_IPU', 'E4-A2', 'E4-GH200']:
         energy_int = measured_scope.energy() 
         print(f"Integrated Total Energy: {np.sum(energy_int):.2f} J")
         f.write(f"integrated: {energy_int}") 
