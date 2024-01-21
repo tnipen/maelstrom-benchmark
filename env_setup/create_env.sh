@@ -125,7 +125,7 @@ if [[ "$ENV_EXIST" == 0 ]]; then
   #fi
   #source $MODULE_SCRIPT
 
-  python3 -m venv ${VENV_DIR}
+  python3 -m venv --system-site-packages ${VENV_DIR}
 
   activate_virt_env=${VENV_DIR}/bin/activate
 
