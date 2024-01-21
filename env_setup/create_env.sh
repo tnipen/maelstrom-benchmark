@@ -153,30 +153,6 @@ if [[ "$ENV_EXIST" == 0 ]]; then
   #pip3 install --no-cache-dir --target=${VENV_DIR}/lib/python3.9/site-packages/ wheel
   #pip3 install --no-cache-dir --target=${VENV_DIR}/lib/python3.9/site-packages/ --upgrade -r ${req_file}
   pip3 install --no-cache-dir -r ${req_file}
- 
-
-  # expand PYTHONPATH
-  #export PYTHONPATH=${VENV_DIR}/lib/python3.9/site-packages:$PYTHONPATH >> ${activate_virt_env}   # already done above
-  export PYTHONPATH=${BASE_DIR}:$PYTHONPATH >> ${activate_virt_env} 
-  export PYTHONPATH=${BASE_DIR}/utils:$PYTHONPATH >> ${activate_virt_env}
-  export PYTHONPATH=${BASE_DIR}/handle_data:$PYTHONPATH >> ${activate_virt_env}
-  export PYTHONPATH=${BASE_DIR}/models:$PYTHONPATH >> ${activate_virt_env}
-  export PYTHONPATH=${BASE_DIR}/postprocess:$PYTHONPATH >> ${activate_virt_env}
-  export PYTHONPATH=${BASE_DIR}/preprocess:$PYTHONPATH >> ${activate_virt_env}
-
-  # ...and ensure that this also done when the
-  echo "" >> ${activate_virt_env}
-  echo "# Expand PYTHONPATH..." >> ${activate_virt_env}
-  echo "export PYTHONPATH=${VENV_DIR}/lib/python${PY_VERSION}/site-packages:\$PYTHONPATH" >> ${activate_virt_env}
-  if [[ $SYSTEM_IS_JSC[$SYSTEM_USED] == 1 ]]; then
-    echo "export PYTHONPATH=/p/software/${MACHINE}/stages/2022/software/Python/3.9.6-GCCcore-11.2.0/lib/python${PY_VERSION}/site-packages/:\$PYTHONPATH" >> ${activate_virt_env} 
-  fi
-  echo "export PYTHONPATH=${BASE_DIR}:\$PYTHONPATH" >> ${activate_virt_env}
-  echo "export PYTHONPATH=${BASE_DIR}/utils/:\$PYTHONPATH" >> ${activate_virt_env}
-  echo "export PYTHONPATH=${BASE_DIR}/models:\$PYTHONPATH " >> ${activate_virt_env}
-  echo "export PYTHONPATH=${BASE_DIR}/handle_data:\$PYTHONPATH" >> ${activate_virt_env}
-  echo "export PYTHONPATH=${BASE_DIR}/postprocess:\$PYTHONPATH" >> ${activate_virt_env}
-  echo "export PYTHONPATH=${BASE_DIR}/preprocess:\$PYTHONPATH" >> ${activate_virt_env}
 
   info_str="Virtual environment ${VENV_DIR} has been set up successfully."
 elif [[ "$ENV_EXIST" == 1 ]]; then
