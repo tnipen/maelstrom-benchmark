@@ -2,8 +2,6 @@ Bootstrap: localimage
 From: tensorflow_23.10-tf2-py3.sif
 
 %post
-    apt -y install mpich
-    apt -y install libpmi2-0-dev
-    pip install argparse numpy horovod psutil
-    pip install climetlab==0.11.9
-    pip install climetlab-maelstrom-radiation==0.7.4
+    apt -y install libnetcdf-dev libnetcdff-dev
+    pip install argparse numpy==1.22.2 pandas==1.5.2 xarray==0.20.1 netcdf4==1.5.7 psutil pynvml
+

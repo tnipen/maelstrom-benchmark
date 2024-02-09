@@ -29,6 +29,10 @@ parameterset:
         type: string
         _: --mpi=pspmix env PMIX_SECURITY_MODE=native apptainer run --nv $jube_benchmark_home/../h100.sif -- python -u $jube_benchmark_home/../benchmark.py
       - name: program
+        tag: "h100+tf23.04"
+        type: string
+        _: --mpi=pspmix env PMIX_SECURITY_MODE=native apptainer run --nv $jube_benchmark_home/../h100_tf23.04.sif -- python -u $jube_benchmark_home/../benchmark.py
+      - name: program
         tag: "mi250x"
         type: string
         _: --mpi=pmi2 apptainer run $jube_benchmark_home/../mi250x.sif -- python -u $jube_benchmark_home/../benchmark.py
