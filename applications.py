@@ -328,8 +328,10 @@ class AP5(Application):
         """
         learning_rate = 1.0e-5  # Doesn't matter for this benchmark
         optimizers = {}
-        optimizers["c_optimizer"] = keras.optimizers.Adam(learning_rate)
-        optimizers["g_optimizer"] = keras.optimizers.Adam(learning_rate)
+        #opt = keras.optimizers.legacy.Adam             # so far, better performance for H100-experiments
+        opt = keras.optimizers.Adam                     # default optimizer
+        optimizers["c_optimizer"] = opt(learning_rate)
+        optimizers["g_optimizer"] = opt(learning_rate)
         if with_horovod:
             import horovod.tensorflow as hvd
             for optimizer_model, optimizer in optimizers.items():
