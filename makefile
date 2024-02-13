@@ -9,5 +9,5 @@ mi250x.sif:
 	APPTAINER_CACHEDIR=$(CACHEDIR) apptainer pull --tmpdir $(TMPDIR) docker://rocm/tensorflow:rocm5.7-tf2.13-dev
 	apptainer build $@ mi250x.def
 h100.sif:
-	APPTAINER_CACHEDIR=$(CACHEDIR) apptainer pull --tmpdir $(TMPDIR) docker://nvcr.io/nvidia/tensorflow:23.10-tf2-py3
+	APPTAINER_CACHEDIR=$(CACHEDIR) apptainer pull --tmpdir $(TMPDIR) docker://nvcr.io/nvidia/tensorflow:23.04-tf2-py3
 	apptainer build $@ h100.def
