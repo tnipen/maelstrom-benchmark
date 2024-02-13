@@ -241,7 +241,8 @@ parameterset:
         separator: |
         _: |
           kill -9 $$(cat ~/powerout.$$label.pid)
-          awk '{print "POWERMEASUREMENT: " $0}' ~/powerout.$$label.csv
+          awk '{print "POWERMEASUREMENT: " $0}' ~/powerout.$$label.csv;
+          cp ~/powerout.$$label.csv $jube_wp_abspath/
 
       - {name: n_cpu, _: 48, tag: jwb}
       - {name: n_cpu, _: 48, tag: jrc}
