@@ -404,10 +404,7 @@ patternset:
       - {name: performance_nonfirst_epoch, type: float, _: "Performance non-first epoch:\\s+$jube_pat_fp MB/s"}
       - {name: performance_min_epoch, type: float, _: "Performance min epoch:\\s+$jube_pat_fp MB/s"}
       - {name: performance, type: float, _: "Average performance:\\s+$jube_pat_fp GB/s"}
-      - {name: node_id, type: string, _: "POWERMEASUREMENT Label = $jube_pat_wrd"}
-      - {name: time_pat, type: int, _: "POWERMEASUREMENT: $jube_pat_int,$jube_pat_nint,$jube_pat_nint"}
-      - {name: watt_pat, type: int, _: "POWERMEASUREMENT: $jube_pat_nint,$jube_pat_int,$jube_pat_nint"}
-      - {name: va_pat, type: int, _: "POWERMEASUREMENT: $jube_pat_nint,$jube_pat_nint,$jube_pat_int"}
+      - {name: watt_pat, default: -999, type: int, _: "POWERMEASUREMENT: $jube_pat_nint,$jube_pat_int,$jube_pat_nint"}
 
 
 analyser:
@@ -460,11 +457,8 @@ result:
           - {title: "Integrated Total Energy [J]", _: total_integrated_energy}
           - {title: "Counter Total Energy [J]", _: total_counter_energy}
           - {title: "Max Power [W]", _: max_power}
-          - {title: "node_id", _: node_id}
           - {title: "Max. Watts", _: watt_pat_max}
           - {title: "Avg. Watts", _: watt_pat_avg}
-          - {title: "Max. VA", _: va_pat_max}
-          - {title: "Avg. VA", _: va_pat_avg}
 
 step:
   - name: setup_venv
