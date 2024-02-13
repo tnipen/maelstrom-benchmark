@@ -227,6 +227,21 @@ parameterset:
         tag: "jwb|jwc|amd|intel|jrc"
         _:
           $modules;
+      - name: preprocess
+        mode: text
+        tag: "e4a2|e4gh200"
+        _:
+          export label=$$(/opt/share/scripts/powerdiscovery/getlabel.sh);
+          echo "POWERMEASUREMENT Label = $$label";
+          /opt/share/scripts/powerdiscovery/getpower_bg.sh 1000 &
+          $modules;
+      - name: postprocess
+        mode: text
+        tag: e4a2|e4gh200
+        separator: |
+        _: |
+          kill -9 $$(cat ~/powerout.$$label.pid)
+          awk '{print "POWERMEASUREMENT: " $0}' ~/powerout.$$label.csv
 
       - {name: n_cpu, _: 48, tag: jwb}
       - {name: n_cpu, _: 48, tag: jrc}
@@ -387,6 +402,12 @@ patternset:
       - {name: performance, type: float, _: "Average performance:\\s+$jube_pat_fp MB/s"}
       - {name: performance_nonfirst_epoch, type: float, _: "Performance non-first epoch:\\s+$jube_pat_fp MB/s"}
       - {name: performance_min_epoch, type: float, _: "Performance min epoch:\\s+$jube_pat_fp MB/s"}
+      - {name: performance, type: float, _: "Average performance:\\s+$jube_pat_fp GB/s"}
+      - {name: node_id, type: string, _: "POWERMEASUREMENT Label = $jube_pat_wrd"}
+      - {name: time_pat, type: int, _: "POWERMEASUREMENT: $jube_pat_int,$jube_pat_nint,$jube_pat_nint"}
+      - {name: watt_pat, type: int, _: "POWERMEASUREMENT: $jube_pat_nint,$jube_pat_int,$jube_pat_nint"}
+      - {name: va_pat, type: int, _: "POWERMEASUREMENT: $jube_pat_nint,$jube_pat_nint,$jube_pat_int"}
+
 
 analyser:
     - name: analyse_train
@@ -438,6 +459,11 @@ result:
           - {title: "Integrated Total Energy [J]", _: total_integrated_energy}
           - {title: "Counter Total Energy [J]", _: total_counter_energy}
           - {title: "Max Power [W]", _: max_power}
+          - {title: "node_id", _: node_id}
+          - {title: "Max. Watts", _: watt_pat_max}
+          - {title: "Avg. Watts", _: watt_pat_avg}
+          - {title: "Max. VA", _: va_pat_max}
+          - {title: "Avg. VA", _: va_pat_avg}
 
 step:
   - name: setup_venv
