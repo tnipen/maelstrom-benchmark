@@ -257,59 +257,60 @@ parameterset:
       - name: SRUN_CPUS_PER_TASK
         export: true
         _: ${SLURM_CPUS_PER_TASK}
-      - name: i
-        tag: e4a2
-        _: '0,1,2'
-      - name: i
-        tag: e4gh200
-        _: '0,1'
+      #- name: i
+      #  tag: e4a2
+      #  _: '0,1,2'
+      #- name: i
+      #  tag: e4gh200
+      #  _: '0,1'
       - name: nodes
-        tag: "!e4a2|!e4gh200"
+      #  tag: "!e4a2|!e4gh200"
         _: 1
-      - name: nodes 
-        tag: e4a2
-        mode: "python"
-        _: '[1,1,2][$i]'
-      - name: nodes 
-        tag: e4gh200
-        mode: "python"
-        _: '[1,2][$i]'
+      #- name: nodes 
+      #  tag: e4a2
+      #  mode: "python"
+      #  _: '[1,1,2][$i]'
+      #- name: nodes 
+      #  tag: e4gh200
+      #  mode: "python"
+      #  _: '[1,2][$i]'
       - name: n_procs
         tag: "!ipu|!mi250x|!e4a2|!e4gh200"
         _: 1,2,4
+      #- name: n_procs
+      #  tag: e4a2
+      #  mode: "python"
+      #  _: '[1,2,4][$i]'
+      #- name: n_procs
+      #  tag: "e4gh200"
+      #  mode: "python"
+      #  _: '[1,2][$i]'
       - name: n_procs
-        tag: e4a2
-        mode: "python"
-        _: '[1,2,4][$i]'
-      - name: n_procs
-        tag: "e4gh200"
-        mode: "python"
-        _: '[1,2][$i]'
-      - name: n_procs
-        tag: "ipu"
+      # tag: "ipu"
+        tag: "ipu|e4a2|e4gh200"
         _: 1
       - name: n_procs
         tag: mi250x
         _: 1,2,4,8
-        #- name: n_procs
-        #tag: "e4a2"
-        #_: 1,2
+      #  - name: n_procs
+      #  tag: "e4a2"
+      #  _: 1,2
       - name: n_gpu
-        tag: "!e4gh200|!e4a2"
+      #  tag: "!e4gh200|!e4a2"
         _: $n_procs
-      - name: n_gpu
-        tag: "e4gh200"
-        _: 1
-      - name: n_gpu
-        tag: "e4a2"
-        mode: "python"
-        _: '[1,2,2][$i]'
+      #- name: n_gpu
+      #  tag: "e4gh200"
+      #  _: 1
+      #- name: n_gpu
+      #  tag: "e4a2"
+      #  mode: "python"
+      #  _: '[1,2,2][$i]'
       - name: taskspernode
-        tag: "!e4a2|!e4gh200"
+      #  tag: "!e4a2|!e4gh200"
         _: $n_procs
-      - name: tasks
-        tag: "e4a2|e4gh200"
-        _: $n_procs
+      #- name: tasks
+      #  tag: "e4a2|e4gh200"
+      #  _: $n_procs
       - name: threadspertask
         mode: python
         type: int
