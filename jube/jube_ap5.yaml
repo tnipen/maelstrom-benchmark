@@ -229,12 +229,19 @@ parameterset:
           $modules;
       - name: preprocess
         mode: text
-        tag: "e4a2|e4gh200"
+        tag: "e4a2"
         _:
           export label=$$(/opt/share/scripts/powerdiscovery/getlabel.sh);
           echo "POWERMEASUREMENT Label = $$label";
           /opt/share/scripts/powerdiscovery/getpower_bg.sh 1000 &
           $modules;
+      - name: preprocess
+        mode: text
+        tag: "e4gh200"
+        _:
+          export label=$$(/opt/share/scripts/powerdiscovery/getlabel.sh);
+          echo "POWERMEASUREMENT Label = $$label";
+          /opt/share/scripts/powerdiscovery/getpower_bg.sh 1000 &
       - name: postprocess
         mode: text
         tag: e4a2|e4gh200
