@@ -30,6 +30,10 @@ parameterset:
         tag: "mi250x"
         type: string
         _: --mpi=pmi2 apptainer run $jube_benchmark_home/../mi250x.sif -- python -u $jube_benchmark_home/../benchmark.py
+      - name: program
+        tag: "gh200"
+        type: string
+        _: docker run --gpus all --shm-size=1g --ulimit memlock=-1  -v /home/aprietonemesio/maelstrom-benchmark:/workspace/maelstrom-benchmark -w /workspace/maelstrom-benchmark/jube  --rm ap3_maelstrom_no-io:latest  python -u ../benchmark.py 
       - name: hardware_name
         type: string
         tag: jwb|jrc
@@ -56,11 +60,15 @@ parameterset:
         _: H100_GPU
       - name: hardware_name
         type: string
+        tag: gh200
+        _: GH200_GPU  
+      - name: hardware_name
+        type: string
         tag: mi250x
         _: MI250_GPU
       - name: hardware
         type: string
-        tag: jwb|jwc|jrc|h100|mi250x
+        tag: jwb|jwc|jrc|h100|mi250x|gh200
         _: gpu
       - name: hardware
         type: string
@@ -76,7 +84,8 @@ parameterset:
         _: cpu
       - name: experiment
         type: int
-        _: 0 # ,1,2
+        #_: 0,1,2
+        _: 0
       - name: nepochs
         type: int
         _: 4
@@ -85,7 +94,8 @@ parameterset:
         # _: 80, 160, 320, 640
       - name: batch_size
         type: int
-        _: 256
+        # _: 512,384,256,128,64,32
+        _: 512 ,384,256, 128,32,64 
       - name: replica
         tag: ipu
         type: int
@@ -177,9 +187,21 @@ parameterset:
     parameter:
       - name: preprocess
         mode: text
-        tag: "jwb|jwc|amd|intel|jrc"
-        _:
-          $modules;
+        tag: gh200
+        separator: |
+        _ : |
+          export label=$$(/home/aprietonemesio/maelstrom-benchmark/jube/powerdiscovery/getlabel.sh);
+          echo "POWERMEASUREMENT Label = $$label";
+          /home/aprietonemesio/maelstrom-benchmark/jube/powerdiscovery/getpower_bg.sh 1000 &
+          #$modules;
+          #source $jube_benchmark_home/../.venv_${systemname}/bin/activate
+      - name: postprocess
+        mode: text
+        tag: gh200
+        separator: |
+        _: |
+          kill -9 $$(cat powerout.$$label.pid)
+          awk '{print "POWERMEASUREMENT: " $0}' powerout.$$label.csv
 
       - {name: n_cpu, _: 48, tag: jwb}
       - {name: n_cpu, _: 48, tag: jrc}
@@ -189,6 +211,9 @@ parameterset:
       - {name: n_cpu, _: 48, tag: ipu}
       - {name: n_cpu, _: 72, tag: h100}
       - {name: n_cpu, _: 48, tag: mi250x}
+      - {name: n_cpu, _: 72, tag: gh200}
+     
+      
       - name: SRUN_CPUS_PER_TASK
         export: true
         _: ${SLURM_CPUS_PER_TASK}
@@ -217,6 +242,9 @@ parameterset:
         tag: jrc
         _: exalab
       - name: account
+        tag: gh200
+        _: maelstrom
+      - name: account
         tag: ipu|h100|mi250x|jrc
         _: exalab
       - name: queue
@@ -232,6 +260,9 @@ parameterset:
         tag: ipu
         _: dc-ipu
       - name: queue
+        tag: gh200
+        _: t-gpu-gh200
+      - name: queue
         tag: h100
         _: dc-h100
       - name: queue
@@ -240,8 +271,11 @@ parameterset:
       - name: queue
         tag: jrc
         _: dc-gpu-devel
+      - name: nodelist
+        tag: dh200 
+        _: ngnode02
       - name: gres
-        tag: jwb|jwc|jrc|h100
+        tag: jwb|jwc|jrc|h100|gh200
         _: gpu:$n_gpu
       - name: executable
         _: ${program}
@@ -276,6 +310,11 @@ patternset:
       - {name: performance, type: float, _: "Average performance:\\s+$jube_pat_fp MB/s"}
       - {name: performance_nonfirst_epoch, type: float, _: "Performance non-first epoch:\\s+$jube_pat_fp MB/s"}
       - {name: performance_min_epoch, type: float, _: "Performance min epoch:\\s+$jube_pat_fp MB/s"}
+      - {name: node_id, type: string, _: "POWERMEASUREMENT Label = $jube_pat_wrd"}
+      - {name: time_pat, type: int, _: "POWERMEASUREMENT: $jube_pat_int,$jube_pat_nint,$jube_pat_nint"}
+      - {name: watt_pat, type: int, _: "POWERMEASUREMENT: $jube_pat_nint,$jube_pat_int,$jube_pat_nint"}
+      - {name: va_pat, type: int, _: "POWERMEASUREMENT: $jube_pat_nint,$jube_pat_nint,$jube_pat_int"}
+
 
 analyser:
     - name: analyse_train
@@ -327,6 +366,11 @@ result:
           - {title: "Integrated Total Energy [J]", _: total_integrated_energy}
           - {title: "Counter Total Energy [J]", _: total_counter_energy}
           - {title: "Max Power [W]", _: max_power}
+          - {title: "node_id", _: node_id}
+          - {title: "Max. Watts",      _: watt_pat_max}
+          - {title: "Avg. Watts",      _: watt_pat_avg}
+          - {title: "Max. VA",         _: va_pat_max}
+          - {title: "Min. VA",         _: va_pat_min}
 
 step:
   - name: setup_venv
