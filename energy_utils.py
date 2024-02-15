@@ -10,7 +10,7 @@ def get_energy_profiler(hardware_name):
     elif hardware_name in ['A100_GPU','H100_GPU']:
         return GetNVIDIAPower
     elif hardware_name == 'MI250_GPU':
-        return GetARMPower
+        return GetAMDPower
     else:
         raise NotImplementedError(f"Unknown hardware_name {hardware_name}")
 
@@ -48,6 +48,7 @@ class GetNVIDIAPower(object):
             time.sleep(wait_for)
             last_timestamp = timestamp
         queue.put(power_value_dict)
+                
 
     def __exit__(self, type, value, traceback):
         self.end_event.set()
@@ -64,10 +65,10 @@ class GetNVIDIAPower(object):
         return _energy
 
     
-#ARM GPUS
+#AMD GPUS
 
 
-class GetARMPower(object):
+class GetAMDPower(object):
     def __enter__(self):
         self.end_event = Event()
         self.power_queue = Queue()
@@ -142,8 +143,8 @@ class GetARMPower(object):
         power_value_dict = self.power_queue.get()
         self.energy_list_counter = self.power_queue.get()
         self.smip.join()
-
         self.df = pd.DataFrame(power_value_dict)
+        
     def energy(self):
         import numpy as np
         _energy = []

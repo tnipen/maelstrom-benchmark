@@ -46,7 +46,7 @@ def main():
 
     
     energy_profiler = energy_utils.get_energy_profiler(args.hardware_name)
-    
+
     with energy_profiler() as measured_scope:
         print('Measuring Energy during main() call')
         try:
