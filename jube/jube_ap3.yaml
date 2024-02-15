@@ -9,7 +9,7 @@ comment: MAELSTROM GPU/CPU/IPU benchmark jube script
 # - amd (CPUs on JUWELS booster)
 # - intel (CPUs on JUWELS cluster)
 # - h100 (GPUs on JURECA)
-# - mi250x (GPUs on JURECA)
+# - mi250 (GPUs on JURECA)
 
 parameterset:
   - name: appParameters
@@ -25,9 +25,9 @@ parameterset:
       - name: program
         tag: "h100"
         type: string
-        _: --mpi=pmi2 apptainer run --nv $jube_benchmark_home/../h100.sif -- python -u $jube_benchmark_home/../benchmark.py
+        _: --mpi=pspmix env PMIX_SECURITY_MODE=native apptainer run --nv $jube_benchmark_home/../h100.sif -- python -u $jube_benchmark_home/../benchmark.py
       - name: program
-        tag: "mi250x"
+        tag: "mi250"
         type: string
         _: --mpi=pmi2 apptainer run $jube_benchmark_home/../mi250x.sif -- python -u $jube_benchmark_home/../benchmark.py
       - name: program
@@ -95,7 +95,8 @@ parameterset:
       - name: batch_size
         type: int
         # _: 512,384,256,128,64,32
-        _: 512 ,384,256, 128,32,64 
+        _: 512,384,256,128,64,32
+        #_: 32
       - name: replica
         tag: ipu
         type: int
@@ -178,7 +179,7 @@ parameterset:
         tag: intel
         _: jwb
       - name: systemname
-        tag: ipu|h100|mi250x
+        tag: ipu|h100|mi250
         _: jrc
   - name: executeset
     init_with: platform.xml
@@ -213,7 +214,6 @@ parameterset:
       - {name: n_cpu, _: 48, tag: mi250x}
       - {name: n_cpu, _: 72, tag: gh200}
      
-      
       - name: SRUN_CPUS_PER_TASK
         export: true
         _: ${SLURM_CPUS_PER_TASK}
@@ -221,7 +221,10 @@ parameterset:
         _: 1
       - name: n_procs
         tag: "!ipu"
-        _: 1
+        _: 1,4
+      - name: n_procs
+        tag: "mi250"
+        _: 8
       - name: n_procs
         tag: ipu
         _: 1
@@ -234,7 +237,7 @@ parameterset:
         type: int
         _:  $n_cpu // $n_procs
       - name: timelimit
-        _: "00:60:00"
+        _: "01:30:00"
       - name: account
         tag: jwb|jwc|amd|intel
         _: deepacf
@@ -266,7 +269,7 @@ parameterset:
         tag: h100
         _: dc-h100
       - name: queue
-        tag: mi250x
+        tag: mi250
         _: dc-mi200
       - name: queue
         tag: jrc
