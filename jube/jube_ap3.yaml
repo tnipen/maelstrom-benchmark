@@ -191,11 +191,9 @@ parameterset:
         tag: gh200
         separator: |
         _ : |
-          export label=$$(/home/aprietonemesio/maelstrom-benchmark/jube/powerdiscovery/getlabel.sh);
+          export label=$$(/opt/share/scripts/powerdiscovery/getlabel.sh);
           echo "POWERMEASUREMENT Label = $$label";
-          /home/aprietonemesio/maelstrom-benchmark/jube/powerdiscovery/getpower_bg.sh 1000 &
-          #$modules;
-          #source $jube_benchmark_home/../.venv_${systemname}/bin/activate
+          /opt/share/scripts/powerdiscovery/getpower_bg.sh 1000 &
       - name: postprocess
         mode: text
         tag: gh200
