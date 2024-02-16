@@ -15,7 +15,7 @@ parameterset:
   - name: appParameters
     parameter:
       - name: program
-        tag: jwb|jwc|jrc|amd|intel|e4gh200|e4a2
+        tag: jwc|amd|intel|e4gh200|e4a2
         type: string
         _: python -u $jube_benchmark_home/../benchmark.py
       - name: program
@@ -23,7 +23,7 @@ parameterset:
         type: string
         _: apptainer run $jube_benchmark_home/../ipu.sif -- python -u $jube_benchmark_home/../benchmark.py
       - name: program
-        tag: "h100"
+        tag: h100|jrc|jwb
         type: string
         _: --mpi=pspmix env PMIX_SECURITY_MODE=native apptainer run --nv $jube_benchmark_home/../h100.sif -- python -u $jube_benchmark_home/../benchmark.py
         #_: --mpi=pmi2 apptainer run --nv $jube_benchmark_home/../h100.sif -- python -u $jube_benchmark_home/../benchmark.py
@@ -110,7 +110,7 @@ parameterset:
         _: 64,32,16,8,4,2,1
       - name: batch_size
         type: int
-        tag: jwb|mi250x
+        tag: jwb|mi250x|jrc
         _: 256,128,64,32,16,8,4,2,1
         # _: 1
       - name: batch_size
@@ -157,10 +157,6 @@ parameterset:
         _: 36507222016
         # _: 137438953472
       - name: dataset_size
-        tag: "jrc"
-        type: int
-        _: 268435456
-      - name: dataset_size
         # Use a smaller dataset for CPU benchmarks, otherwise it takes forever
         tag: intel|amd
         type: int
@@ -178,14 +174,14 @@ parameterset:
     parameter:
       - name: create_env
         # ipu doesn't need any env activated, because it runs in the container
-        tag: "jwb|jwc|amd|intel|jrc"
+        tag: "jwc|amd|intel"
         separator: |
         _: 
           cd $jube_benchmark_home/../env_setup/;
           source ./create_env.sh venv_$systemname;
       - name: activate_env
         # ipu doesn't need any env activated, because it runs in the container
-        tag: "jwb|jwc|amd|intel|jrc"
+        tag: "jwc|amd|intel"
         separator: |
         _: 
           source $jube_benchmark_home/../virtual_envs/venv_$systemname/bin/activate
@@ -197,7 +193,7 @@ parameterset:
           source $jube_benchmark_home/../virtual_envs/venv_$systemname/bin/activate
       - name: modules
         # ipu doesn't need any modules loaded, because it runs in the container
-        tag: "jwb|jwc|amd|intel|jrc"
+        tag: "jwc|amd|intel"
         separator: |
         _: 
           module load Stages/2022 &&
@@ -238,7 +234,7 @@ parameterset:
         tag: intel
         _: jwb
       - name: systemname
-        tag: ipu|h100|mi250x
+        tag: ipu|h100|mi250x|jrc
         _: jrc
       - name: systemname
         tag: e4gh200
@@ -282,7 +278,7 @@ parameterset:
       - {name: n_cpu, _: 48, tag: intel}
       - {name: n_cpu, _: 40, tag: jwc}
       - {name: n_cpu, _: 48, tag: ipu}
-      - {name: n_cpu, _: 72, tag: h100}
+      - {name: n_cpu, _: 36, tag: h100}
         # Don't use 96 for mi250x, this causes communication errors
       - {name: n_cpu, _: 48, tag: mi250x}
       - {name: n_cpu, _: 32, tag: e4gh200}
@@ -325,9 +321,6 @@ parameterset:
       - name: account
         tag: jwb|jwc|amd|intel
         _: deepacf
-      - name: account
-        tag: jrc
-        _: exalab
       - name: account
         tag: ipu|h100|mi250x|jrc
         _: exalab
