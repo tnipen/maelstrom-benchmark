@@ -253,10 +253,28 @@ parameterset:
     parameter:
       - name: preprocess
         mode: text
-        tag: "jwb|jwc|amd|intel|jrc|e4gh200|e4a2"
+        tag: e4a2|e4gh200
+        # separator: |
+        _:
+          export label=$$(/opt/share/scripts/powerdiscovery/getlabel.sh);
+          echo "POWERMEASUREMENT Label = $$label";
+          /opt/share/scripts/powerdiscovery/getpower_bg.sh 1000 &
+          $modules;
+          $activate_env;
+          free -m;
+      - name: preprocess
+        mode: text
+        tag: "jwb|jwc|amd|intel|jrc"
         _:
           $modules;
           $activate_env;
+      - name: postprocess
+        mode: text
+        tag: e4a2|e4gh200
+        separator: |
+        _: |
+          kill -9 $$(cat ~/powerout.$$label.pid)
+          awk '{print "POWERMEASUREMENT: " $0}' ~/powerout.$$label.csv
 
       - {name: n_cpu, _: 48, tag: jwb}
       - {name: n_cpu, _: 48, tag: jrc}
@@ -384,6 +402,8 @@ patternset:
       - {name: performance, type: float, _: "Average performance:\\s+$jube_pat_fp MB/s"}
       - {name: performance_nonfirst_epoch, type: float, _: "Performance non-first epoch:\\s+$jube_pat_fp MB/s"}
       - {name: performance_min_epoch, type: float, _: "Performance min epoch:\\s+$jube_pat_fp MB/s"}
+      - {name: system_power, type: int, _: "POWERMEASUREMENT: $jube_pat_nint,$jube_pat_int,$jube_pat_nint"}
+      - {name: system_va, type: int, _: "POWERMEASUREMENT: $jube_pat_nint,$jube_pat_nint,$jube_pat_int"}
 
 analyser:
     - name: analyse_train
@@ -439,6 +459,8 @@ result:
           - {title: "Max Power [W]", _: max_power}
           - {title: "Max Aggregate Power [W]", _: max_agg_power}
           - {title: "Mean Aggregate Power [W]", _: mean_agg_power}
+          - {title: "System avg power [W]", _: system_power_avg}
+          - {title: "System avg VA [W]", _: system_va_avg}
 
 step:
   - name: setup_venv
