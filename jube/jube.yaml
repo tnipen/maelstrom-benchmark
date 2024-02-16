@@ -112,17 +112,15 @@ parameterset:
         type: int
         tag: jwb|mi250x|jrc
         _: 256,128,64,32,16,8,4,2,1
-        # _: 1
+        # _: 256
       - name: batch_size
         type: int
         tag: h100|e4gh200
-        # _: 512,256,128,64,32,16,8,4,2,1
-        _: 256,128,64,32,16,8,4,2,1
-        # _: 512
+        _: 512,256,128,64,32,16,8,4,2,1
       - name: batch_size
         type: int
         tag: "ipu"
-        _: 2
+        _: 1
       - name: gradient_accumulation_steps
         type: int
         tag: "!ipu"
@@ -131,12 +129,11 @@ parameterset:
         type: int
         tag: ipu
         _: 1,2,4,8,16,32,64,128,256
-        # _: 1,2,4,8,16
         # _: 1
       - name: replica
         tag: ipu
         type: int
-        _: 4
+        _: 1
       - name: replica
         tag: "!ipu"
         type: int
