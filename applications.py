@@ -64,7 +64,11 @@ class Application:
         Applications can override this, if needed.
         """
         learning_rate = 1.0e-5  # Doesn't matter for this benchmark
-        optimizer = keras.optimizers.Adam(learning_rate)
+        try:
+            # Try this one first, since it is needed in newer versions of horovod
+            optimizer = keras.optimizers.legacy.Adam(learning_rate)
+        except Exception as e:
+            optimizer = keras.optimizers.Adam(learning_rate)
         if self.with_horovod:
             import horovod.tensorflow as hvd
             import horovod.keras.callbacks as hvd_callbacks
